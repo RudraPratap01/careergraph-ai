@@ -1,0 +1,162 @@
+"""
+Resume service — business logic for Phase 3: Resume Intelligence.
+
+Coordinates:
+  1. Secure resume file upload and text extraction
+  2. Skill extraction, normalization, confidence scoring, and evidence collection
+  3. Student review, skill confirmation, and sync to StudentProfile
+"""
+
+from typing import Optional, List
+from sqlalchemy.orm import Session
+from fastapi import UploadFile, HTTPException, status
+
+from app.models.user import User, UserRole
+from app.models.profile import StudentProfile
+from app.models.resume import Resume
+from app.schemas.resume import (
+    ExtractedSkill,
+    ResumeUploadResponse,
+    ResumeDetailResponse,
+    ConfirmSkillsRequest,
+    ConfirmSkillsResponse,
+    ConfirmSkillItem,
+)
+from app.services.text_extractor import validate_and_extract_text
+from app.services.skill_extractor import extract_skills_from_text
+
+
+async def handle_resume_upload(
+    user: User,
+    file: UploadFile,
+    db: Session,
+) -> ResumeUploadResponse:
+    """
+    Handles resume upload:
+    - Extracts clean text from PDF / DOCX / TXT
+    - Runs skill extraction with confidence and evidence
+    - Stores record in 'resumes' table
+    - Returns structured summary for student review
+    """
+    if user.role not in [UserRole.STUDENT, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can upload resumes for analysis.",
+        )
+
+    # 1. Validate & extract text
+    cleaned_text, file_type, file_size = await validate_and_extract_text(file)
+
+    # 2. Extract & normalize skills with evidence
+    extracted_skills: List[ExtractedSkill] = extract_skills_from_text(cleaned_text)
+
+    # 3. Save Resume record to database
+    resume = Resume(
+        user_id=user.id,
+        filename=file.filename or f"resume.{file_type}",
+        file_type=file_type,
+        file_size_bytes=file_size,
+        raw_text=cleaned_text,
+        extracted_skills=[s.model_dump() for s in extracted_skills],
+        status="parsed",
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    # 4. Create snippet of raw text (first ~300 chars)
+    raw_snippet = cleaned_text[:300].strip() + ("…" if len(cleaned_text) > 300 else "")
+
+    return ResumeUploadResponse(
+        resume_id=resume.id,
+        filename=resume.filename,
+        file_type=resume.file_type,
+        file_size_bytes=resume.file_size_bytes,
+        extracted_skills_count=len(extracted_skills),
+        extracted_skills=extracted_skills,
+        raw_text_snippet=raw_snippet,
+        status=resume.status,
+        created_at=resume.created_at,
+    )
+
+
+def get_latest_student_resume(user: User, db: Session) -> Optional[ResumeDetailResponse]:
+    """Retrieves the user's latest uploaded resume and extracted skills."""
+    resume = (
+        db.query(Resume)
+        .filter(Resume.user_id == user.id)
+        .order_by(Resume.created_at.desc())
+        .first()
+    )
+    if not resume:
+        return None
+
+    extracted_skills = [ExtractedSkill(**s) for s in (resume.extracted_skills or [])]
+
+    return ResumeDetailResponse(
+        id=resume.id,
+        user_id=resume.user_id,
+        filename=resume.filename,
+        file_type=resume.file_type,
+        file_size_bytes=resume.file_size_bytes,
+        extracted_skills=extracted_skills,
+        raw_text=resume.raw_text,
+        status=resume.status,
+        created_at=resume.created_at,
+        updated_at=resume.updated_at,
+    )
+
+
+def confirm_student_skills(
+    user: User,
+    request: ConfirmSkillsRequest,
+    db: Session,
+) -> ConfirmSkillsResponse:
+    """
+    Student review workflow:
+    - Approves, modifies, or adds extracted skills
+    - Marks resume as 'reviewed'
+    - Synchronizes confirmed skills directly into StudentProfile.skills
+    """
+    if user.role not in [UserRole.STUDENT, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can confirm resume skills.",
+        )
+
+    # 1. If resume_id is provided, mark it as reviewed
+    if request.resume_id:
+        resume = (
+            db.query(Resume)
+            .filter(Resume.id == request.resume_id, Resume.user_id == user.id)
+            .first()
+        )
+        if resume:
+            resume.status = "reviewed"
+
+    # 2. Retrieve or create StudentProfile
+    profile = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+    if not profile:
+        profile = StudentProfile(user_id=user.id, skills=[])
+        db.add(profile)
+        db.flush()
+
+    # 3. Merge confirmed skills into profile skills
+    existing_skills = {s["name"].lower(): s for s in (profile.skills or [])}
+
+    for skill_item in request.skills:
+        name_key = skill_item.name.lower()
+        existing_skills[name_key] = {
+            "name": skill_item.name,
+            "level": skill_item.level,
+        }
+
+    profile.skills = list(existing_skills.values())
+    db.commit()
+
+    return ConfirmSkillsResponse(
+        message="Resume skills confirmed and synced to student profile successfully.",
+        total_confirmed_skills=len(request.skills),
+        synced_to_profile=True,
+        skills=request.skills,
+    )
