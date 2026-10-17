@@ -4,259 +4,17 @@ Skill extraction and normalization engine.
 Phase 3: Resume Intelligence
 Matches canonical skills against extracted resume text, determines confidence,
 extracts contextual evidence, and normalizes synonyms into standard nomenclature.
+
+The canonical taxonomy lives in ``app/data/skills_taxonomy.py`` (curated,
+internal data) so Phase 4 (skill gaps) and Phase 5 (dependency graph) share a
+single source of truth. ``TAXONOMY`` is re-exported here for backwards
+compatibility with existing imports/tests.
 """
 
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from app.schemas.resume import ExtractedSkill
-
-# ─── Canonical Skills Taxonomy ────────────────────────────────────────────────
-# Maps canonical skill name -> { category, aliases, case_sensitive }
-TAXONOMY: Dict[str, Dict[str, Any]] = {
-    # ── Languages ─────────────────────────────────────────────────────────────
-    "Python": {
-        "category": "Languages",
-        "aliases": ["python", "python3", "python 3", "py"],
-    },
-    "JavaScript": {
-        "category": "Languages",
-        "aliases": ["javascript", "js", "ecmascript"],
-    },
-    "TypeScript": {
-        "category": "Languages",
-        "aliases": ["typescript", "ts"],
-    },
-    "Java": {
-        "category": "Languages",
-        "aliases": ["java", "core java", "j2ee"],
-        "negative_lookahead": r"(?!script)",  # avoid matching javascript
-    },
-    "C++": {
-        "category": "Languages",
-        "aliases": ["c\\+\\+", "cpp"],
-    },
-    "C#": {
-        "category": "Languages",
-        "aliases": ["c#", "csharp", "c-sharp"],
-    },
-    "C": {
-        "category": "Languages",
-        "aliases": ["c language", "ansi c", "c programming"],
-        "case_sensitive_aliases": ["C"],
-    },
-    "Go": {
-        "category": "Languages",
-        "aliases": ["golang", "go language"],
-    },
-    "Rust": {
-        "category": "Languages",
-        "aliases": ["rust", "rustlang"],
-    },
-    "Ruby": {
-        "category": "Languages",
-        "aliases": ["ruby"],
-    },
-    "PHP": {
-        "category": "Languages",
-        "aliases": ["php", "php7", "php8"],
-    },
-    "Swift": {
-        "category": "Languages",
-        "aliases": ["swift", "swiftui"],
-    },
-    "Kotlin": {
-        "category": "Languages",
-        "aliases": ["kotlin"],
-    },
-    "SQL": {
-        "category": "Languages",
-        "aliases": ["sql", "structured query language", "transact-sql", "t-sql", "pl/sql"],
-    },
-    "HTML": {
-        "category": "Languages",
-        "aliases": ["html", "html5"],
-    },
-    "CSS": {
-        "category": "Languages",
-        "aliases": ["css", "css3"],
-    },
-    "R": {
-        "category": "Languages",
-        "aliases": ["r language", "r programming"],
-    },
-    "Shell / Bash": {
-        "category": "Languages",
-        "aliases": ["bash", "shell scripting", "bash scripting", "powershell", "zsh"],
-    },
-
-    # ── Frameworks & Libraries ────────────────────────────────────────────────
-    "React": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["react", "react.js", "reactjs", "react native"],
-    },
-    "Node.js": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["node.js", "nodejs", "node js"],
-    },
-    "FastAPI": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["fastapi", "fast-api", "fast api"],
-    },
-    "Django": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["django", "django rest framework", "drf"],
-    },
-    "Flask": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["flask"],
-    },
-    "Express.js": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["express", "express.js", "expressjs"],
-    },
-    "Next.js": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["next.js", "nextjs", "next js"],
-    },
-    "Vue.js": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["vue", "vue.js", "vuejs"],
-    },
-    "Angular": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["angular", "angularjs", "angular 2+"],
-    },
-    "Spring Boot": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["spring boot", "springboot", "spring framework"],
-    },
-    "ASP.NET": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["asp.net", "dotnet", ".net core", "asp.net core"],
-    },
-    "Tailwind CSS": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["tailwind", "tailwindcss", "tailwind css"],
-    },
-    "PyTorch": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["pytorch", "torch"],
-    },
-    "TensorFlow": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["tensorflow", "tf", "keras"],
-    },
-    "Scikit-learn": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["scikit-learn", "sklearn", "scikit learn"],
-    },
-    "Pandas": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["pandas"],
-    },
-    "NumPy": {
-        "category": "Frameworks & Libraries",
-        "aliases": ["numpy"],
-    },
-
-    # ── Databases & Storage ───────────────────────────────────────────────────
-    "PostgreSQL": {
-        "category": "Databases",
-        "aliases": ["postgresql", "postgres", "psql"],
-    },
-    "MySQL": {
-        "category": "Databases",
-        "aliases": ["mysql"],
-    },
-    "MongoDB": {
-        "category": "Databases",
-        "aliases": ["mongodb", "mongo"],
-    },
-    "Redis": {
-        "category": "Databases",
-        "aliases": ["redis"],
-    },
-    "SQLite": {
-        "category": "Databases",
-        "aliases": ["sqlite", "sqlite3"],
-    },
-    "Elasticsearch": {
-        "category": "Databases",
-        "aliases": ["elasticsearch", "elastic search"],
-    },
-    "Firebase": {
-        "category": "Databases",
-        "aliases": ["firebase", "firestore"],
-    },
-
-    # ── Cloud & DevOps ────────────────────────────────────────────────────────
-    "Docker": {
-        "category": "Cloud & DevOps",
-        "aliases": ["docker", "docker containers", "dockerfile", "docker-compose"],
-    },
-    "Kubernetes": {
-        "category": "Cloud & DevOps",
-        "aliases": ["kubernetes", "k8s"],
-    },
-    "AWS": {
-        "category": "Cloud & DevOps",
-        "aliases": ["aws", "amazon web services", "ec2", "s3", "lambda", "aws lambda"],
-    },
-    "Azure": {
-        "category": "Cloud & DevOps",
-        "aliases": ["azure", "microsoft azure"],
-    },
-    "Google Cloud (GCP)": {
-        "category": "Cloud & DevOps",
-        "aliases": ["gcp", "google cloud", "google cloud platform"],
-    },
-    "Git": {
-        "category": "Cloud & DevOps",
-        "aliases": ["git", "github", "gitlab", "version control"],
-    },
-    "Linux": {
-        "category": "Cloud & DevOps",
-        "aliases": ["linux", "ubuntu", "debian", "redhat", "centos", "unix"],
-    },
-    "CI/CD": {
-        "category": "Cloud & DevOps",
-        "aliases": ["ci/cd", "cicd", "continuous integration", "github actions", "jenkins"],
-    },
-    "Nginx": {
-        "category": "Cloud & DevOps",
-        "aliases": ["nginx"],
-    },
-
-    # ── Concepts & Architecture ───────────────────────────────────────────────
-    "REST APIs": {
-        "category": "Concepts & Architecture",
-        "aliases": ["rest api", "rest apis", "restful", "restful api", "restful apis", "rest architecture"],
-    },
-    "GraphQL": {
-        "category": "Concepts & Architecture",
-        "aliases": ["graphql", "graph ql"],
-    },
-    "Microservices": {
-        "category": "Concepts & Architecture",
-        "aliases": ["microservices", "microservice architecture", "micro-services"],
-    },
-    "System Design": {
-        "category": "Concepts & Architecture",
-        "aliases": ["system design", "distributed systems", "high availability", "scalability"],
-    },
-    "Data Structures & Algorithms": {
-        "category": "Concepts & Architecture",
-        "aliases": ["data structures", "algorithms", "dsa", "leetcode"],
-    },
-    "Object-Oriented Programming": {
-        "category": "Concepts & Architecture",
-        "aliases": ["oop", "object oriented", "object-oriented programming"],
-    },
-    "Unit Testing": {
-        "category": "Concepts & Architecture",
-        "aliases": ["unit testing", "pytest", "jest", "junit", "tdd", "test driven development"],
-    },
-}
+from app.data.skills_taxonomy import TAXONOMY  # noqa: F401  (re-exported)
 
 # Regex to detect section boundaries
 SECTION_HEADER_REGEX = re.compile(
@@ -345,17 +103,23 @@ def extract_skills_from_text(text: str) -> List[ExtractedSkill]:
         # 1. Check case-insensitive aliases
         for alias in aliases:
             escaped = re.escape(alias)
-            pattern = rf"\b{escaped}\b{negative_lookahead}"
+            start_b = r"\b" if re.match(r"^\w", alias) else r"(?<!\S)"
+            end_b = r"\b" if re.search(r"\w$", alias) else r"(?!\w)"
+            pattern = rf"{start_b}{escaped}{end_b}{negative_lookahead}"
             for item in items:
                 if re.search(pattern, item["text"], re.IGNORECASE):
                     matches.append(item)
 
         # 2. Check case-sensitive aliases (e.g., 'C')
         for cs_alias in case_sensitive_aliases:
-            pattern = rf"\b{re.escape(cs_alias)}\b"
+            escaped = re.escape(cs_alias)
+            start_b = r"\b" if re.match(r"^\w", cs_alias) else r"(?<!\S)"
+            end_b = r"\b" if re.search(r"\w$", cs_alias) else r"(?!\w)"
+            pattern = rf"{start_b}{escaped}{end_b}{negative_lookahead}"
             for item in items:
                 if re.search(pattern, item["text"]):
                     matches.append(item)
+
 
         if not matches:
             continue

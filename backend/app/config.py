@@ -29,19 +29,20 @@ class Settings(BaseSettings):
     # ─── CORS ───────────────────────────────────────────────────────────────
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
-    # ─── Neo4j (Phase 6) ────────────────────────────────────────────────────
+    # ─── Neo4j (Phase 5 skill graph) ────────────────────────────────────────
+    # GRAPH_BACKEND: "memory" (default, always available) or "neo4j".
+    # With "neo4j", the app uses Neo4j only if the server is reachable and the
+    # neo4j driver is installed; otherwise it falls back to the in-memory graph.
+    GRAPH_BACKEND: str = "memory"
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "change-this-too"
 
-    # ─── LLM / OpenRouter (Phase 7+) ────────────────────────────────────────
+    # ─── LLM / OpenRouter (Phase 7+, not yet implemented) ───────────────────
     OPENROUTER_API_KEY: str = ""
     LLM_MODEL: str = "openai/gpt-4o-mini"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
 
 
 @lru_cache

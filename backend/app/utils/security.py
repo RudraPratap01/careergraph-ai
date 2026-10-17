@@ -106,7 +106,15 @@ def get_current_user(
     from app.models.user import User  # local import to avoid circular deps
 
     payload = decode_access_token(auth.credentials)
-    user_id = int(payload.get("sub"))
+
+    # The "sub" claim must be a numeric user id. A malformed token (e.g. a valid
+    # signature but a non-numeric sub) must return 401, never a 500.
+    raw_sub = payload.get("sub")
+    try:
+        user_id = int(raw_sub)
+    except (TypeError, ValueError):
+        raise credentials_exception
+
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.is_active:
         raise HTTPException(
@@ -126,7 +134,10 @@ def require_role(*roles: str):
             ...
     """
     def role_checker(current_user=Depends(get_current_user)):
-        if current_user.role not in roles:
+        # UserRole is a str-Enum, but normalise defensively so that plain string
+        # roles are compared correctly regardless of how the value was produced.
+        role_value = getattr(current_user.role, "value", current_user.role)
+        if role_value not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied. Required roles: {list(roles)}",
