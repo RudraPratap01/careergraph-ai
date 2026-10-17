@@ -2,22 +2,41 @@
 
 > **Know your gap. Build your path. Meet your mentor.**
 
-A career intelligence platform for BTech / final-year students. It analyzes skills from multiple sources, calculates skill gaps against target careers, generates personalized roadmaps, and matches students with alumni mentors.
+A career intelligence platform for BTech / final-year students. It analyses skills from
+multiple sources, computes skill gaps against target occupations, generates
+prerequisite-ordered learning roadmaps, and lists alumni mentors.
 
 ---
 
 ## Current Status
 
+This table describes **what is actually implemented and verified in this repository**,
+not what is planned.
+
 | Phase | Status | Description |
 |-------|--------|-------------|
-| Phase 1 | ✅ Complete | Foundation — FastAPI, React, Auth, Database |
-| Phase 2 | ✅ Complete | User Profiles — Student & Alumni Profile Models, Schemas, Routes & UI |
-| Phase 3 | ⏳ Next | Resume Intelligence — Parsing & Skill Extraction |
-| Phase 4 | — | GitHub + LinkedIn |
-| Phase 5 | — | Career Intelligence |
-| Phase 6 | — | Skill Dependency Graph (Neo4j) |
-| Phase 7 | — | RAG + Knowledge Base |
-| Phase 8 | — | Personalized Roadmap |
+| Phase 1 | ✅ Complete | Foundation — FastAPI, React, JWT auth, database, health checks |
+| Phase 2 | ✅ Complete | User Profiles — student & alumni profiles, completion score, mentor directory |
+| Phase 3 | ✅ Complete | Resume Intelligence — PDF/DOCX/TXT parsing, skill extraction with confidence & evidence, student review & confirmation |
+| Phase 4 | ✅ Complete | Skill Gaps & Career Readiness — occupation catalog, deterministic readiness scoring |
+| Phase 5 | ✅ Complete | Skill Graph & Learning Roadmap — dependency graph, prerequisite-ordered roadmaps, progress tracking |
+| Phase 6 | ⛔ Not started | GitHub + LinkedIn verification |
+| Phase 7 | ⛔ Not started | RAG knowledge base + LLM explanations (OpenRouter) |
+| Phase 8 | ⛔ Not started | Assessments & alumni matching |
+
+### Explicitly *not* implemented (do not assume otherwise)
+
+* **LLM usage** — no LLM is called anywhere. All scores, explanations and roadmap ordering
+  are deterministic and computed in Python. `OPENROUTER_API_KEY` exists in config for a
+  future phase but is unused.
+* **Neo4j** — a Neo4j adapter exists and is code-complete, but it is **unverified against a
+  live server** (no instance is available in the development environment). The default and
+  tested graph backend is the built-in in-memory graph.
+* **Learning resources / course links** — roadmaps do *not* include course URLs. No curated
+  resource dataset exists, so no links are invented.
+* **GitHub / LinkedIn ingestion, RAG, assessments, alumni matching** — not started.
+* **spaCy / sentence-transformers** — not used. Skill extraction is regex matching against a
+  curated in-repo taxonomy (see below).
 
 ---
 
@@ -25,21 +44,21 @@ A career intelligence platform for BTech / final-year students. It analyzes skil
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React, Vite, Tailwind CSS, React Router, Axios |
-| Backend | Python, FastAPI, SQLAlchemy, Pydantic |
-| Database | PostgreSQL (SQLite for local dev) |
-| Graph | Neo4j (Phase 6) |
-| NLP/ML | spaCy, sentence-transformers (Phase 3+) |
-| LLM | OpenRouter API (Phase 7+) |
-| Auth | JWT + bcrypt |
+| Frontend | React 19, Vite, Tailwind CSS v4, React Router, Axios |
+| Backend | Python 3.11+, FastAPI, SQLAlchemy 2, Pydantic v2 |
+| Database | SQLite (local dev) / PostgreSQL (staging & production) |
+| Migrations | Alembic |
+| Graph | In-memory backend (default, tested); optional Neo4j backend (unverified) |
+| Skill extraction | Regex matching + curated taxonomy (no ML models) |
+| Auth | JWT (HS256) + bcrypt |
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
+- Python 3.11+ (developed and verified against 3.14)
 - Node.js 18+
-- Python 3.11+
 - Git
 
 ### Backend
@@ -47,13 +66,13 @@ A career intelligence platform for BTech / final-year students. It analyzes skil
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate          # Windows
+.venv\Scripts\activate            # Windows
+# source .venv/bin/activate       # macOS / Linux
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Backend runs at: http://localhost:8000  
-API docs: http://localhost:8000/docs
+Backend runs at <http://localhost:8000> · API docs at <http://localhost:8000/docs>
 
 ### Frontend
 
@@ -63,7 +82,22 @@ npm install
 npm run dev
 ```
 
-Frontend runs at: http://localhost:5173
+Frontend runs at <http://localhost:5173>
+
+### Database migrations
+
+Tables are also created automatically on startup in development, but migrations are the
+authoritative schema history:
+
+```bash
+cd backend
+python -m alembic upgrade head        # apply migrations
+python -m alembic current             # show current revision
+python -m alembic check               # verify models match the schema
+```
+
+Revisions: `0001_baseline` (users, profiles, resumes) and `0002_roadmaps` (Phase 5 tables).
+Both are additive; nothing is dropped or reset.
 
 ---
 
@@ -71,38 +105,138 @@ Frontend runs at: http://localhost:5173
 
 Copy `.env.example` to `backend/.env` and fill in values.
 
-For local development (no Docker):
-```
+```ini
 DATABASE_URL=sqlite:///./careergraph_dev.db
+
+# Skill graph: "memory" (default, always available) or "neo4j"
+GRAPH_BACKEND=memory
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-neo4j-password
 ```
 
 For PostgreSQL (when Docker is available):
+
 ```bash
 docker compose up -d
-# Then update .env:
+# Then update backend/.env:
 DATABASE_URL=postgresql+psycopg2://careergraph:careergraph_pass@localhost:5432/careergraph_db
 ```
+
+If `GRAPH_BACKEND=neo4j` but the server is unreachable or the driver is missing, the app logs
+a warning and transparently falls back to the in-memory graph instead of failing.
 
 ---
 
 ## API Endpoints
 
 ### Authentication & System (Phase 1)
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | /health | Server + DB health check | No |
-| POST | /auth/register | Create account | No |
-| POST | /auth/login | Login, get JWT token | No |
-| GET | /auth/me | Get current user | Yes |
+| GET | `/health` | Server + DB health check | No |
+| POST | `/auth/register` | Create account | No |
+| POST | `/auth/login` | Login, get JWT token | No |
+| GET | `/auth/me` | Get current user | Yes |
 
 ### User Profiles & Mentors (Phase 2)
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | /profile/me | Get current user's profile & completion score | Yes |
-| PUT | /profile/student | Update student education, target role & skills | Yes (Student) |
-| PUT | /profile/alumni | Update alumni role, expertise & availability | Yes (Alumni) |
-| GET | /profile/{user_id} | Get public profile for any user | Yes |
-| GET | /alumni | List available alumni mentors (with `expertise` filter) | No |
+| GET | `/profile/me` | Current user's profile + completion score | Yes |
+| PUT | `/profile/student` | Update student education, target role & skills | Student |
+| PUT | `/profile/alumni` | Update alumni role, expertise & availability | Alumni |
+| GET | `/profile/{user_id}` | Public profile for any user | Yes |
+| GET | `/alumni` | List available alumni mentors (with `expertise` filter) | No |
+
+### Resume Intelligence (Phase 3)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/resume/upload` | Upload & parse a resume (PDF, DOCX, TXT ≤ 10 MB) | Student |
+| GET | `/resume/latest` | Most recent parsed resume for the current user | Student |
+| POST | `/resume/confirm-skills` | Confirm/replace the student's skills (syncs to the profile) | Student |
+
+### Skill Gaps & Career Readiness (Phase 4)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/career/occupations` | List the curated occupation catalog | Yes |
+| GET | `/career/occupations/{key}` | One occupation with its required & optional skills | Yes |
+| GET | `/career/gap-analysis` | Deterministic readiness analysis (`?occupation=` optional) | Student |
+
+### Skill Dependency Graph (Phase 5A)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/graph/stats` | Active backend, node/edge counts, acyclicity | Yes |
+| GET | `/graph/skills/{skill}` | Transitive prerequisites + direct dependents | Yes |
+
+### Learning Roadmap (Phase 5B)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/roadmap/generate` | Generate a prerequisite-ordered roadmap | Student |
+| GET | `/roadmap` | Current active roadmap | Student |
+| GET | `/roadmap/{roadmap_id}` | One roadmap you own | Student |
+| GET | `/roadmap/{roadmap_id}/explanations` | Per-step explanations | Student |
+| POST | `/roadmap/{roadmap_id}/steps` | Update one step's progress | Student |
+| POST | `/roadmap/refresh` | Regenerate from current skills & target role | Student |
+
+All roadmap endpoints are ownership-scoped: requesting another user's roadmap returns `404`.
+
+---
+
+## How the Readiness Score Works (Phase 4)
+
+The score is **deterministic, explainable and reproducible**. No LLM is involved and it is
+**not** a probability of employment.
+
+```
+readiness = round( 100 × Σ weight(matched required skills)
+                        / Σ weight(all required skills) )
+```
+
+* Each required skill in the occupation catalog carries an importance weight (1–5).
+* **Presence** of a skill counts; the self-reported level is shown but does not change the score.
+* Only `required_skills` affect the score. `optional_skills` are reported as bonuses and never
+  lower the score.
+* Skill names are normalised through the taxonomy (e.g. `postgres` → `PostgreSQL`); duplicates
+  collapse to the highest stated level.
+* Skills outside the taxonomy are returned in `unknown_skills` and neither help nor hurt.
+
+The API returns a per-skill contribution breakdown (`contributions`), a human-readable
+`explanation`, and a `disclaimer` stating the metric is not a hiring probability.
+
+---
+
+## How the Skill Graph & Roadmap Work (Phase 5)
+
+**Data.** The graph is built from a curated, in-repo prerequisite dataset
+(`backend/app/data/skill_prerequisites.py`) in which every edge is tagged
+`source="curated"` and carries a rationale. Every skill referenced is a canonical name from
+`backend/app/data/skills_taxonomy.py`. No ESCO/O*NET records or identifiers are claimed or
+invented.
+
+**Backends.** `BaseSkillGraph` implements the algorithms (bounded traversal, missing-prerequisite
+discovery, deterministic topological ordering, cycle detection). `InMemorySkillGraph` is the
+default and the one the test suite exercises. `Neo4jSkillGraph` persists edges in Neo4j and
+reloads them via Cypher, then reuses the same algorithms.
+
+**Roadmap generation.**
+
+1. Required skills for the target occupation are read from the Phase 4 catalog.
+2. Required skills the student already has become `possessed_skills` and are **never scheduled**.
+3. Missing prerequisites of the outstanding skills are discovered via the graph.
+4. Steps are topologically ordered — **a prerequisite never appears after the skill that
+   depends on it** (verified by tests). Ordering is deterministic (lexicographic tie-breaks).
+5. Steps are snapshotted on the roadmap; progress lives in `roadmap_step_progress` so a single
+   step can be updated without rewriting the snapshot.
+6. If dependency data is incomplete (empty graph, unknown skills, or a cycle), the roadmap is
+   flagged `is_partial` with a `notes` explanation instead of guessing.
+
+Refreshing preserves progress for steps that still exist. Only one roadmap is active per user;
+regenerating archives the previous one.
 
 ---
 
@@ -115,12 +249,15 @@ Browser (React/Vite :5173)
         ▼
 FastAPI Backend (:8000)
         │
-        ├── Pydantic validation
-        ├── SQLAlchemy ORM
-        ├── JWT Auth
+        ├── Pydantic validation        (schemas/)
+        ├── Services — business logic  (services/)
+        │     ├── skill_gap_service    Phase 4 readiness (deterministic)
+        │     ├── graph_service        Phase 5 dependency graph
+        │     └── roadmap_service      Phase 5 roadmap planning
+        ├── JWT auth + bcrypt          (utils/)
         │
-        ▼
-SQLite (dev) / PostgreSQL (prod)
+        ├──▶ SQLite (dev) / PostgreSQL (prod)
+        └──▶ Curated in-repo data (app/data/)  ·  optional Neo4j
 ```
 
 ---
@@ -129,35 +266,91 @@ SQLite (dev) / PostgreSQL (prod)
 
 ```
 careergraph-ai/
-├── frontend/           React + Vite + Tailwind
+├── frontend/
+│   └── src/
+│       ├── components/     Navbar, shared UI
+│       ├── pages/          Landing, Login, Register, Dashboard, Profile,
+│       │                   Resume, CareerGap (Phase 4), Roadmap (Phase 5)
+│       ├── services/       api.js — single HTTP layer
+│       └── setupTests.js   Vitest + Testing Library setup
 ├── backend/
+│   ├── alembic/            Migration environment + revisions
 │   └── app/
-│       ├── config.py   All settings from .env
-│       ├── database/   SQLAlchemy session
-│       ├── models/     DB models
-│       ├── schemas/    Pydantic schemas
-│       ├── routes/     API endpoints
-│       ├── services/   Business logic
-│       └── utils/      JWT, password hashing
-├── docker-compose.yml  PostgreSQL + Neo4j
-└── .env.example        Config template
+│       ├── config.py       All settings from .env
+│       ├── data/           Curated taxonomy, occupations, prerequisites
+│       ├── database/       SQLAlchemy engine & session
+│       ├── models/         DB models (user, profile, resume, roadmap)
+│       ├── schemas/        Pydantic request/response models
+│       ├── routes/         API endpoints
+│       ├── services/       Business logic
+│       └── utils/          JWT, password hashing
+├── docker-compose.yml      PostgreSQL + Neo4j
+└── .env.example            Config template
 ```
+
+---
+
+## Testing
+
+### Backend
+
+```bash
+cd backend
+.venv\Scripts\python.exe -m pytest -q
+```
+
+**145 tests pass** (Phase 1–5), including:
+
+| File | Focus |
+|------|-------|
+| `test_phase2_profiles.py` | Profiles, completion score, mentor listing |
+| `test_phase3_resume.py` / `test_phase3_extended.py` | Resume parsing, extraction, confirmation |
+| `test_swagger_auth.py` | Swagger bearer-token auth flow |
+| `test_security_regressions.py` | Malformed/expired tokens → 401 (never 500), role enforcement |
+| `test_phase4_skill_gap.py` | Taxonomy integrity, scoring exactness, API behaviour |
+| `test_phase5_graph.py` | Duplicate/self-loop rejection, bounded traversal, ordering, cycles, Neo4j→memory fallback |
+| `test_phase5_roadmap.py` | Roadmap ordering, persistence, progress, ownership isolation |
+| `test_journey_e2e.py` | The full 13-step critical journey |
+
+### Frontend
+
+```bash
+cd frontend
+npm run test        # vitest run
+npm run lint        # oxlint
+npm run build       # production build
+```
+
+**14 frontend tests pass**, covering the API error-normalisation layer and the Phase 4 & 5 UI
+(readiness rendering, ordered roadmap steps, prerequisite relationships, progress updates,
+partial-roadmap warnings, empty states).
 
 ---
 
 ## Viva Answers
 
-**Why FastAPI?**  
-Python-native, fast, auto-generates API docs, integrates naturally with NLP/ML libraries.
+**Why FastAPI?**
+Python-native, fast, auto-generates API docs, and pairs naturally with the data/AI work in later phases.
 
-**Why SQLAlchemy?**  
-ORM that works with both SQLite (dev) and PostgreSQL (prod) — switching is a config change.
+**Why SQLAlchemy?**
+One ORM works with both SQLite (dev) and PostgreSQL (prod) — switching databases is a config change.
 
-**Why JWT?**  
-Stateless authentication — the server doesn't need a session store. Token carries identity.
+**Why JWT?**
+Stateless authentication — the server doesn't need a session store; the token carries identity.
+Malformed or expired tokens are rejected with `401`, never `500`.
 
-**Why bcrypt?**  
-Slow by design — makes brute-force attacks expensive. Never stores plaintext passwords.
+**Why bcrypt?**
+Slow by design — makes brute-force attacks expensive. Plaintext passwords are never stored.
 
-**Why separate service layer?**  
-Routes handle HTTP. Services handle business logic. Easier to test and maintain.
+**Why separate the service layer?**
+Routes handle HTTP, services handle business logic, `app/data/` holds curated reference data.
+This keeps the deterministic scoring logic independently testable from the API surface.
+
+**Why is the readiness score deterministic instead of LLM-generated?**
+So it is reproducible, auditable and unit-testable. An LLM may later *explain* a score (Phase 7),
+but it must never *invent* it — and the score is explicitly not a probability of employment.
+
+**Why an in-memory graph by default?**
+It makes the graph behaviour fully deterministic and testable with zero infrastructure, while the
+Neo4j adapter provides a production path. The adapter is present but flagged unverified until a
+live instance is available.

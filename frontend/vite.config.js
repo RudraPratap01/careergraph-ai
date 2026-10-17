@@ -21,4 +21,11 @@ export default defineConfig({
       },
     },
   },
+  // Vitest configuration (frontend component/unit tests).
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/setupTests.js',
+    include: ['src/**/*.test.{js,jsx}'],
+  },
 })

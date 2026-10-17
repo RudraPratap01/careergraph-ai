@@ -15,6 +15,8 @@ import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import ProfilePage from './pages/ProfilePage'
 import ResumePage from './pages/ResumePage'
+import CareerGapPage from './pages/CareerGapPage'
+import RoadmapPage from './pages/RoadmapPage'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, initialCheckDone } = useAuth()
@@ -65,6 +67,15 @@ export default function App() {
             path="/resume"
             element={<ProtectedRoute><ResumePage /></ProtectedRoute>}
           />
+          <Route
+            path="/career-gap"
+            element={<ProtectedRoute><CareerGapPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/roadmap"
+            element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>}
+          />
+
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

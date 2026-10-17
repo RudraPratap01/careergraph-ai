@@ -13,7 +13,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { healthAPI, profileAPI, resumeAPI } from '../services/api'
+import { healthAPI, profileAPI, resumeAPI, careerAPI, roadmapAPI } from '../services/api'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -26,6 +26,8 @@ export default function DashboardPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [mentors, setMentors] = useState([])
   const [latestResume, setLatestResume] = useState(null)
+  const [gap, setGap] = useState(null)
+  const [roadmap, setRoadmap] = useState(null)
 
   useEffect(() => {
     // 1. Check backend health
@@ -44,6 +46,10 @@ export default function DashboardPage() {
         if (user?.role === 'student') {
           profileAPI.getAlumniMentors().then((mRes) => setMentors(mRes.data)).catch(() => {})
           resumeAPI.getLatestResume().then((rRes) => setLatestResume(rRes.data)).catch(() => {})
+          // Phase 4: readiness for the saved target role (400 if none selected).
+          careerAPI.getGapAnalysis().then((gRes) => setGap(gRes.data)).catch(() => setGap(null))
+          // Phase 5: current roadmap (404 if not generated yet).
+          roadmapAPI.getCurrent().then((rRes) => setRoadmap(rRes.data)).catch(() => setRoadmap(null))
         }
       })
       .catch((err) => console.error('Failed to load profile:', err))
@@ -64,7 +70,8 @@ export default function DashboardPage() {
               Welcome, {user?.full_name?.split(' ')[0]} 👋
             </h1>
             <p className="section-subtitle" style={{ marginBottom: 0 }}>
-              Phase 1 (Foundation) & Phase 2 (User Profiles) are active. Manage your career trajectory below.
+              Phases 1–5 are active: foundation, profiles, resume intelligence, skill-gap
+              readiness, and prerequisite-aware learning roadmaps.
             </p>
           </div>
 
@@ -79,7 +86,7 @@ export default function DashboardPage() {
             <div>
               <strong>Profile is {completion}% complete:</strong>{' '}
               {isStudent
-                ? 'Add your target career role, skills, and links so CareerGraph AI can compute your gap analysis in Phase 3.'
+                ? 'Add your target career role, skills, and links so CareerGraph AI can compute your skill-gap readiness and build your roadmap.'
                 : 'Set your industry company and mentoring availability to start connecting with students.'}
             </div>
             <Link to="/profile" className="btn btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
@@ -389,6 +396,89 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Career Readiness Card (Phase 4) */}
+          {isStudent && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🎯</span> Career Readiness
+                </h3>
+                <Link to="/career-gap" style={{ fontSize: '0.8rem', color: 'var(--color-brand-light)' }}>
+                  {gap ? 'View gap analysis →' : 'Analyze →'}
+                </Link>
+              </div>
+
+              {gap ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800 }}>{gap.readiness_score}%</span>
+                    <span className="badge badge-info">{gap.readiness_band}</span>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
+                    {gap.occupation_name} • {gap.matched_count}/{gap.required_count} required skills covered
+                  </div>
+                  <div className="progress-bar-track">
+                    <div className="progress-bar-fill" style={{ width: `${gap.readiness_score}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--color-bg-elevated)', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                    {studentProfile?.target_role
+                      ? 'Run a readiness analysis against your target role.'
+                      : 'Select a target role to compute your readiness.'}
+                  </p>
+                  <Link to="/career-gap" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>
+                    Open Skill Gap Analysis
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Learning Roadmap Card (Phase 5) */}
+          {isStudent && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🗺️</span> Learning Roadmap
+                </h3>
+                <Link to="/roadmap" style={{ fontSize: '0.8rem', color: 'var(--color-brand-light)' }}>
+                  {roadmap ? 'Open roadmap →' : 'Build →'}
+                </Link>
+              </div>
+
+              {roadmap ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800 }}>{roadmap.progress.percent_complete}%</span>
+                    <span className="badge badge-info">
+                      {roadmap.progress.completed_steps}/{roadmap.progress.total_steps} steps
+                    </span>
+                    {roadmap.is_partial && <span className="badge badge-medium">Partial</span>}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+                    {roadmap.occupation_name}
+                  </div>
+                  {roadmap.next_action && (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--color-brand-light)' }}>
+                      Next: {roadmap.next_action}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--color-bg-elevated)', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                    Generate a prerequisite-ordered plan for your target role.
+                  </p>
+                  <Link to="/roadmap" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>
+                    Generate Roadmap
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Development Roadmap Progress Card */}
           <div className="card">
             <div style={{ fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -399,11 +489,11 @@ export default function DashboardPage() {
                 { n: 1, label: 'Foundation & Auth', done: true },
                 { n: 2, label: 'User Profiles & Mentors', done: true },
                 { n: 3, label: 'Resume Intelligence', done: true },
-                { n: 4, label: 'GitHub + LinkedIn Verification', done: false, active: true },
-                { n: 5, label: 'Career Intelligence & Gap Engine', done: false },
-                { n: 6, label: 'Skill Dependency Graph (Neo4j)', done: false },
+                { n: 4, label: 'Skill Gaps & Career Readiness', done: true },
+                { n: 5, label: 'Skill Graph & Learning Roadmap', done: true },
+                { n: 6, label: 'GitHub + LinkedIn Verification', done: false },
                 { n: 7, label: 'RAG Knowledge Base (OpenRouter)', done: false },
-                { n: 8, label: 'Personalized Roadmap Generation', done: false },
+                { n: 8, label: 'Assessments & Alumni Matching', done: false },
               ].map((p) => (
                 <div key={p.n} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem' }}>
                   <span style={{
@@ -429,7 +519,9 @@ export default function DashboardPage() {
 
         {/* System Alert Info */}
         <div className="alert alert-info">
-          <strong>✓ Phase 3 (Resume Intelligence) Active</strong> — PDF/DOCX text parsing, NLP skill extraction with confidence and evidence excerpts, and student confirmation workflow are live.
+          <strong>✓ Phases 1–5 are live</strong> — authentication, profiles, resume intelligence
+          (PDF/DOCX/TXT parsing with confidence &amp; evidence), deterministic skill-gap readiness,
+          and a prerequisite-aware learning roadmap backed by a curated skill-dependency graph.
         </div>
       </div>
     </div>

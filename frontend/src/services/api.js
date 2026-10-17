@@ -95,6 +95,36 @@ export const resumeAPI = {
   confirmSkills: (data) => api.post('/resume/confirm-skills', data),
 }
 
+// ─── Career Intelligence endpoints (Phase 4) ─────────────────────────────────
+export const careerAPI = {
+  listOccupations: () => api.get('/career/occupations'),
+  getOccupation: (key) => api.get(`/career/occupations/${encodeURIComponent(key)}`),
+  getGapAnalysis: (occupation) =>
+    api.get('/career/gap-analysis', { params: occupation ? { occupation } : {} }),
+}
+
+// ─── Skill Graph endpoints (Phase 5A) ────────────────────────────────────────
+export const graphAPI = {
+  getStats: () => api.get('/graph/stats'),
+  getDependencies: (skill, maxDepth) =>
+    api.get(`/graph/skills/${encodeURIComponent(skill)}`, {
+      params: maxDepth ? { max_depth: maxDepth } : {},
+    }),
+}
+
+// ─── Learning Roadmap endpoints (Phase 5B) ───────────────────────────────────
+export const roadmapAPI = {
+  generate: (occupation, regenerate = true) =>
+    api.post('/roadmap/generate', { occupation: occupation || null, regenerate }),
+  getCurrent: () => api.get('/roadmap'),
+  getById: (roadmapId) => api.get(`/roadmap/${roadmapId}`),
+  getExplanations: (roadmapId) => api.get(`/roadmap/${roadmapId}/explanations`),
+  updateStep: (roadmapId, skill, state) =>
+    api.post(`/roadmap/${roadmapId}/steps`, { skill, state }),
+  refresh: (occupation) =>
+    api.post('/roadmap/refresh', null, { params: occupation ? { occupation } : {} }),
+}
+
 // ─── Health ──────────────────────────────────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/health'),

@@ -62,7 +62,11 @@ export default function Navbar() {
               <NavLink to="/dashboard" active={isActive('/dashboard')}>Dashboard</NavLink>
               <NavLink to="/profile" active={isActive('/profile')}>Profile</NavLink>
               {user?.role === 'student' && (
-                <NavLink to="/resume" active={isActive('/resume')}>Resume</NavLink>
+                <>
+                  <NavLink to="/resume" active={isActive('/resume')}>Resume</NavLink>
+                  <NavLink to="/career-gap" active={isActive('/career-gap')}>Skill Gap</NavLink>
+                  <NavLink to="/roadmap" active={isActive('/roadmap')}>Roadmap</NavLink>
+                </>
               )}
 
               <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.5rem' }} />
