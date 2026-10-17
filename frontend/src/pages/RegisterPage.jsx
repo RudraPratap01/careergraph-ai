@@ -39,8 +39,9 @@ export default function RegisterPage() {
     const validationError = validate()
     if (validationError) { setError(validationError); return }
 
-    const { confirm_password, ...payload } = form
+    const { confirm_password: _confirm_password, ...payload } = form
     const result = await register(payload)
+
     if (result.success) {
       navigate('/dashboard')
     } else {

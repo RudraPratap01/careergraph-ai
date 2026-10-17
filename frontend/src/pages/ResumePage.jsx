@@ -10,12 +10,10 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
-import { resumeAPI } from '../services/api'
+import { resumeAPI, formatApiError } from '../services/api'
+
 
 export default function ResumePage() {
-  const { user } = useAuth()
   const fileInputRef = useRef(null)
 
   const [uploading, setUploading] = useState(false)
@@ -37,10 +35,6 @@ export default function ResumePage() {
   const [manualSkillName, setManualSkillName] = useState('')
   const [manualSkillLevel, setManualSkillLevel] = useState('intermediate')
 
-  useEffect(() => {
-    fetchLatestResume()
-  }, [])
-
   const fetchLatestResume = async () => {
     setLoadingLatest(true)
     try {
@@ -58,6 +52,11 @@ export default function ResumePage() {
       setLoadingLatest(false)
     }
   }
+
+  useEffect(() => {
+    fetchLatestResume()
+  }, [])
+
 
   const handleFileUpload = async (file) => {
     if (!file) return
@@ -92,8 +91,9 @@ export default function ResumePage() {
       fetchLatestResume()
     } catch (err) {
       console.error(err)
-      setErrorMsg(err.response?.data?.detail || 'Resume upload failed. Please try again.')
+      setErrorMsg(formatApiError(err, 'Resume upload failed. Please try again.'))
     } finally {
+
       setUploading(false)
       setParsingStage('')
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -160,8 +160,9 @@ export default function ResumePage() {
       fetchLatestResume()
     } catch (err) {
       console.error(err)
-      setErrorMsg(err.response?.data?.detail || 'Failed to sync skills.')
+      setErrorMsg(formatApiError(err, 'Failed to sync skills.'))
     } finally {
+
       setSyncing(false)
     }
   }

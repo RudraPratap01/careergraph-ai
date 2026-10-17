@@ -91,4 +91,6 @@ def login_user(request: LoginRequest, db: Session) -> TokenResponse:
         role=user.role,
         user_id=user.id,
         full_name=user.full_name,
+        email=user.email,
     )
+

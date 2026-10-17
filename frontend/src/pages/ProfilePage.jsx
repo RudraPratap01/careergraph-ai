@@ -10,7 +10,8 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { profileAPI } from '../services/api'
+import { profileAPI, formatApiError } from '../services/api'
+
 
 const POPULAR_ROLES = [
   'Backend Developer',
@@ -80,9 +81,6 @@ export default function ProfilePage() {
   const [newSkillLevel, setNewSkillLevel] = useState('intermediate')
   const [newExpertiseName, setNewExpertiseName] = useState('')
 
-  useEffect(() => {
-    fetchProfile()
-  }, [])
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -132,6 +130,11 @@ export default function ProfilePage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchProfile()
+  }, [])
+
 
   const handleStudentChange = (e) => {
     const { name, value } = e.target
@@ -201,7 +204,7 @@ export default function ProfilePage() {
       setSuccessMsg('Student profile updated successfully!')
       fetchProfile()
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Failed to save student profile.')
+      setErrorMsg(formatApiError(err, 'Failed to save student profile.'))
     } finally {
       setSaving(false)
     }
@@ -223,8 +226,9 @@ export default function ProfilePage() {
       setSuccessMsg('Alumni mentor profile updated successfully!')
       fetchProfile()
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Failed to save alumni profile.')
+      setErrorMsg(formatApiError(err, 'Failed to save alumni profile.'))
     } finally {
+
       setSaving(false)
     }
   }

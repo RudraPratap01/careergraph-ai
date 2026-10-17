@@ -116,7 +116,16 @@ def confirm_student_skills(
     Student review workflow:
     - Approves, modifies, or adds extracted skills
     - Marks resume as 'reviewed'
-    - Synchronizes confirmed skills directly into StudentProfile.skills
+    - Synchronizes the complete confirmed skill list into StudentProfile.skills
+
+    Semantics: The confirmation payload represents the student's complete
+    reviewed skill list (auto-extracted skills the student kept, skills the
+    student edited, and any skills the student manually added during review).
+    Skills that the student removed from the review pane are intentionally
+    absent from the payload and will NOT appear in the saved profile.
+
+    Unrelated profile fields (college, degree, bio, etc.) are not modified.
+    Repeated confirmations are idempotent — duplicates by name are collapsed.
     """
     if user.role not in [UserRole.STUDENT, UserRole.ADMIN]:
         raise HTTPException(
@@ -124,7 +133,7 @@ def confirm_student_skills(
             detail="Only students can confirm resume skills.",
         )
 
-    # 1. If resume_id is provided, mark it as reviewed
+    # 1. If resume_id is provided, verify ownership and mark as reviewed
     if request.resume_id:
         resume = (
             db.query(Resume)
@@ -133,6 +142,8 @@ def confirm_student_skills(
         )
         if resume:
             resume.status = "reviewed"
+        # If resume_id given but not found/not owned, silently skip rather than error
+        # (user may have uploaded a new resume in parallel)
 
     # 2. Retrieve or create StudentProfile
     profile = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
@@ -141,22 +152,26 @@ def confirm_student_skills(
         db.add(profile)
         db.flush()
 
-    # 3. Merge confirmed skills into profile skills
-    existing_skills = {s["name"].lower(): s for s in (profile.skills or [])}
-
+    # 3. Replace profile skills with the complete confirmed list.
+    # Deduplicate by lowercased name (preserving the last value for each name,
+    # matching the order of request.skills so later items take precedence).
+    seen: dict = {}
     for skill_item in request.skills:
-        name_key = skill_item.name.lower()
-        existing_skills[name_key] = {
-            "name": skill_item.name,
+        name_key = skill_item.name.strip().lower()
+        if not name_key:
+            continue
+        seen[name_key] = {
+            "name": skill_item.name.strip(),
             "level": skill_item.level,
         }
 
-    profile.skills = list(existing_skills.values())
+    profile.skills = list(seen.values())
     db.commit()
 
     return ConfirmSkillsResponse(
         message="Resume skills confirmed and synced to student profile successfully.",
-        total_confirmed_skills=len(request.skills),
+        total_confirmed_skills=len(seen),
         synced_to_profile=True,
         skills=request.skills,
     )
+

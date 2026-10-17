@@ -53,6 +53,8 @@ class TokenResponse(BaseModel):
     role: UserRole
     user_id: int
     full_name: str
+    email: EmailStr | None = None
+
 
 
 class UserPublic(BaseModel):

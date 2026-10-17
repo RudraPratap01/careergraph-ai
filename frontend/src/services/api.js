@@ -10,10 +10,33 @@
 
 import axios from 'axios'
 
+/**
+ * Safely normalizes FastAPI error responses (string, dictionary, or 422 array of {loc, msg})
+ * into a user-friendly string so React never crashes on {type, loc, msg, input, ctx}.
+ */
+export function formatApiError(err, fallback = 'An unexpected error occurred.') {
+  const detail = err.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => {
+        const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : ''
+        const fieldPrefix = field && field !== 'body' ? `${field}: ` : ''
+        return `${fieldPrefix}${d.msg || d.message || JSON.stringify(d)}`
+      })
+      .join(', ')
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.msg || detail.message || JSON.stringify(detail)
+  }
+  return err.message || fallback
+}
+
 const api = axios.create({
   baseURL: '/api',  // Vite proxy rewrites /api → http://localhost:8000
   headers: { 'Content-Type': 'application/json' },
 })
+
 
 // ─── Request interceptor ─────────────────────────────────────────────────────
 // Automatically attaches the JWT token to every outgoing request.
@@ -26,14 +49,20 @@ api.interceptors.request.use((config) => {
 })
 
 // ─── Response interceptor ────────────────────────────────────────────────────
-// Handles 401 (session expired) globally.
+// Handles 401 (session expired) globally for protected requests.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('cg_token')
-      localStorage.removeItem('cg_user')
-      window.location.href = '/login'
+      const url = error.config?.url || ''
+      // Do not clear credentials or force reload if the user is attempting to log in or register
+      if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
+        localStorage.removeItem('cg_token')
+        localStorage.removeItem('cg_user')
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
+      }
     }
     return Promise.reject(error)
   }

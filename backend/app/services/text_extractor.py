@@ -97,17 +97,45 @@ def extract_text_from_txt(content: bytes) -> str:
 
 
 def clean_extracted_text(text: str) -> str:
-    """Normalizes whitespace and removes unprintable control characters."""
-    # Replace non-breaking spaces and tabs with normal space
-    text = text.replace("\xa0", " ").replace("\t", " ")
-    # Replace carriage returns
+    """
+    Normalizes whitespace and removes unprintable control characters.
+
+    Preserves all valid Unicode text including accented characters, Indic
+    scripts (Hindi, etc.), CJK, em-dashes, and other legitimate symbols.
+    Only strips genuine control characters (Unicode category Cc/Cs) that
+    are not newline or tab.
+    """
+    import unicodedata
+
+    # Normalise line endings first
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    # Collapse multiple blank lines
+
+    # Replace non-breaking spaces with a regular space (preserve as space, not stripped)
+    text = text.replace("\xa0", " ")
+
+    # Replace tabs with a space (tabs inside text become spaces; structure is kept by newlines)
+    text = text.replace("\t", " ")
+
+    # Remove genuine control characters (Cc category) except for \n which we keep.
+    # Also remove lone surrogates (Cs category) which are invalid in Python strings.
+    cleaned_chars = []
+    for ch in text:
+        cat = unicodedata.category(ch)
+        if ch == "\n":
+            cleaned_chars.append(ch)
+        elif cat in ("Cc", "Cs"):
+            # Strip control/surrogate characters; replace with space to avoid merging tokens
+            cleaned_chars.append(" ")
+        else:
+            cleaned_chars.append(ch)
+    text = "".join(cleaned_chars)
+
+    # Collapse multiple blank lines (3+ newlines → 2)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    # Remove control characters except newline and space
-    text = re.sub(r"[^\x20-\x7E\n\t]", " ", text)
-    # Collapse repeated horizontal spaces
+
+    # Collapse repeated horizontal spaces (but not newlines)
     text = re.sub(r"[ ]{2,}", " ", text)
+
     return text.strip()
 
 
