@@ -320,7 +320,8 @@ def _build_alias_index() -> Dict[str, str]:
     Builds a lookup of lower-cased surface form -> canonical skill name.
 
     Uses ``setdefault`` so the first canonical entry to claim a surface form
-    wins and no alias silently re-points an existing skill. ``tests/test_taxonomy.py``
+    wins and no alias silently re-points an existing skill.
+    ``tests/test_phase4_skill_gap.py::test_alias_index_has_no_collisions``
     asserts the index is collision-free so any accidental overlap is caught.
     """
     index: Dict[str, str] = {}

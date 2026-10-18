@@ -62,5 +62,25 @@ class User(Base):
     # Roadmap relationships (Phase 5)
     roadmaps = relationship("Roadmap", back_populates="user", cascade="all, delete-orphan")
 
+    # Assessment relationships (Phase 8)
+    assessment_attempts = relationship(
+        "AssessmentAttempt", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    # Mentorship relationships (Phase 8). Two FKs point at users, so each
+    # relationship must name its foreign key explicitly.
+    sent_mentorship_requests = relationship(
+        "MentorshipRequest",
+        foreign_keys="MentorshipRequest.student_id",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    received_mentorship_requests = relationship(
+        "MentorshipRequest",
+        foreign_keys="MentorshipRequest.alumni_id",
+        back_populates="alumni",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"

@@ -14,6 +14,14 @@ from app.models.user import UserRole
 class SkillItem(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     level: str = Field("intermediate", pattern="^(beginner|intermediate|advanced)$")
+    source: str = Field(
+        "self",
+        pattern="^(self|resume|assessment)$",
+        description=(
+            "Where the skill came from: self-reported ('self'), parsed from a "
+            "resume ('resume'), or evidenced by a passed assessment ('assessment')."
+        ),
+    )
 
 
 # ─── Student Profile ──────────────────────────────────────────────────────────

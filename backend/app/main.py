@@ -15,9 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database.session import create_tables
 from app.routes.auth import router as auth_router
+from app.routes.assessments import router as assessments_router
 from app.routes.career import router as career_router
 from app.routes.graph import router as graph_router
 from app.routes.health import router as health_router
+from app.routes.mentorship import router as mentorship_router
 from app.routes.profile import router as profile_router
 from app.routes.resume import router as resume_router
 from app.routes.roadmap import router as roadmap_router
@@ -54,6 +56,8 @@ app.include_router(resume_router)
 app.include_router(career_router)     # Phase 4 — skill gaps & readiness
 app.include_router(graph_router)      # Phase 5 — skill dependency graph
 app.include_router(roadmap_router)    # Phase 5 — learning roadmap
+app.include_router(assessments_router)  # Phase 8 — skill assessments
+app.include_router(mentorship_router)   # Phase 8 — alumni matching & mentorship
 
 # Additional routers will be registered here in later phases:
 # app.include_router(github_router)    # Phase 6

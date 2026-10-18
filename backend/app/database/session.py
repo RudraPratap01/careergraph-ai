@@ -60,5 +60,5 @@ def create_tables():
     In production, use Alembic migrations instead.
     """
     # Import all models so Base.metadata knows about them
-    from app.models import user, profile, resume, roadmap  # noqa: F401
+    from app.models import user, profile, resume, roadmap, assessment, mentorship  # noqa: F401
     Base.metadata.create_all(bind=engine)

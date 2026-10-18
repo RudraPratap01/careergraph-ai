@@ -156,13 +156,27 @@ def confirm_student_skills(
     # Deduplicate by lowercased name (preserving the last value for each name,
     # matching the order of request.skills so later items take precedence).
     seen: dict = {}
+
+    # Skills already evidenced by a passed assessment (Phase 8) are preserved at
+    # the front of the list: reviewing a resume must not discard verified
+    # evidence. A resume text match never downgrades an evidenced skill.
+    for entry in profile.skills or []:
+        if isinstance(entry, dict) and entry.get("source") == "assessment":
+            key = str(entry.get("name", "")).strip().lower()
+            if key:
+                seen[key] = dict(entry)
+
     for skill_item in request.skills:
         name_key = skill_item.name.strip().lower()
         if not name_key:
             continue
+        existing = seen.get(name_key)
+        if existing is not None and existing.get("source") == "assessment":
+            continue
         seen[name_key] = {
             "name": skill_item.name.strip(),
             "level": skill_item.level,
+            "source": "resume",
         }
 
     profile.skills = list(seen.values())
