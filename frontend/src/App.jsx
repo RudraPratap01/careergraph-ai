@@ -17,6 +17,8 @@ import ProfilePage from './pages/ProfilePage'
 import ResumePage from './pages/ResumePage'
 import CareerGapPage from './pages/CareerGapPage'
 import RoadmapPage from './pages/RoadmapPage'
+import AssessmentsPage from './pages/AssessmentsPage'
+import MentorsPage from './pages/MentorsPage'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, initialCheckDone } = useAuth()
@@ -74,6 +76,14 @@ export default function App() {
           <Route
             path="/roadmap"
             element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/assessments"
+            element={<ProtectedRoute><AssessmentsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/mentors"
+            element={<ProtectedRoute><MentorsPage /></ProtectedRoute>}
           />
 
           {/* Catch-all */}

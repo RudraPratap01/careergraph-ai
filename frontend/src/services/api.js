@@ -125,6 +125,29 @@ export const roadmapAPI = {
     api.post('/roadmap/refresh', null, { params: occupation ? { occupation } : {} }),
 }
 
+// ─── Skill Assessments (Phase 8) ─────────────────────────────────────────────
+export const assessmentAPI = {
+  list: () => api.get('/assessments'),
+  get: (key) => api.get(`/assessments/${encodeURIComponent(key)}`),
+  start: (key) => api.post(`/assessments/${encodeURIComponent(key)}/start`),
+  submit: (attemptId, answers) =>
+    api.post(`/assessments/attempts/${attemptId}/submit`, { answers }),
+  confirmSkills: (attemptId, skills) =>
+    api.post(`/assessments/attempts/${attemptId}/confirm-skills`, { skills }),
+  history: () => api.get('/assessments/attempts'),
+}
+
+// ─── Alumni Matching & Mentorship (Phase 8) ──────────────────────────────────
+export const mentorshipAPI = {
+  getMatches: () => api.get('/mentorship/matches'),
+  requestMentorship: (alumniUserId, message) =>
+    api.post('/mentorship/requests', { alumni_user_id: alumniUserId, message: message || null }),
+  listRequests: () => api.get('/mentorship/requests'),
+  accept: (requestId) => api.post(`/mentorship/requests/${requestId}/accept`),
+  decline: (requestId) => api.post(`/mentorship/requests/${requestId}/decline`),
+  cancel: (requestId) => api.post(`/mentorship/requests/${requestId}/cancel`),
+}
+
 // ─── Health ──────────────────────────────────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/health'),

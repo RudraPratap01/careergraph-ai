@@ -4,7 +4,8 @@
 
 A career intelligence platform for BTech / final-year students. It analyses skills from
 multiple sources, computes skill gaps against target occupations, generates
-prerequisite-ordered learning roadmaps, and lists alumni mentors.
+prerequisite-ordered learning roadmaps, verifies skills with short assessments, and ranks
+alumni mentors against the gaps that remain.
 
 ---
 
@@ -22,21 +23,24 @@ not what is planned.
 | Phase 5 | ✅ Complete | Skill Graph & Learning Roadmap — dependency graph, prerequisite-ordered roadmaps, progress tracking |
 | Phase 6 | ⛔ Not started | GitHub + LinkedIn verification |
 | Phase 7 | ⛔ Not started | RAG knowledge base + LLM explanations (OpenRouter) |
-| Phase 8 | ⛔ Not started | Assessments & alumni matching |
+| Phase 8 | ✅ Complete | Skill Assessments & Alumni Matching — curated question bank, deterministic grading, evidenced skills, ranked mentors, mentorship requests |
 
 ### Explicitly *not* implemented (do not assume otherwise)
 
-* **LLM usage** — no LLM is called anywhere. All scores, explanations and roadmap ordering
-  are deterministic and computed in Python. `OPENROUTER_API_KEY` exists in config for a
-  future phase but is unused.
+* **LLM usage** — no LLM is called anywhere. All scores, explanations, roadmap ordering,
+  assessment grading and mentor ranking are deterministic and computed in Python.
+  `OPENROUTER_API_KEY` exists in config for a future phase but is unused.
 * **Neo4j** — a Neo4j adapter exists and is code-complete, but it is **unverified against a
   live server** (no instance is available in the development environment). The default and
   tested graph backend is the built-in in-memory graph.
 * **Learning resources / course links** — roadmaps do *not* include course URLs. No curated
   resource dataset exists, so no links are invented.
-* **GitHub / LinkedIn ingestion, RAG, assessments, alumni matching** — not started.
+* **GitHub / LinkedIn ingestion, RAG** — not started.
 * **spaCy / sentence-transformers** — not used. Skill extraction is regex matching against a
   curated in-repo taxonomy (see below).
+* **Adaptive / AI-generated assessments** — the Phase 8 question bank is a small curated set
+  authored in-repo (`backend/app/data/assessments.py`), not generated. Grading is exact
+  answer matching; there is no NLP or semantic grading, and a pass is **not** a certification.
 
 ---
 
@@ -96,8 +100,8 @@ python -m alembic current             # show current revision
 python -m alembic check               # verify models match the schema
 ```
 
-Revisions: `0001_baseline` (users, profiles, resumes) and `0002_roadmaps` (Phase 5 tables).
-Both are additive; nothing is dropped or reset.
+Revisions: `0001_baseline` (users, profiles, resumes), `0002_roadmaps` (Phase 5 tables) and
+`0003_assessments_mentorship` (Phase 8 tables). All are additive; nothing is dropped or reset.
 
 ---
 
@@ -185,6 +189,32 @@ a warning and transparently falls back to the in-memory graph instead of failing
 
 All roadmap endpoints are ownership-scoped: requesting another user's roadmap returns `404`.
 
+### Skill Assessments (Phase 8)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/assessments` | List the curated assessment catalogue | Student |
+| GET | `/assessments/attempts` | Your attempt history (newest first) | Student |
+| GET | `/assessments/{key}` | One assessment's questions — **answers are never included** | Student |
+| POST | `/assessments/{key}/start` | Open a new attempt and return its questions | Student |
+| POST | `/assessments/attempts/{id}/submit` | Grade an attempt deterministically | Student |
+| POST | `/assessments/attempts/{id}/confirm-skills` | Add skills *passed in this attempt* to your profile | Student |
+
+### Alumni Matching & Mentorship (Phase 8)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/mentorship/matches` | Rank alumni mentors for the current student | Student |
+| GET | `/mentorship/requests` | Requests you sent (student) or received (alumni) | Yes |
+| POST | `/mentorship/requests` | Request mentorship from a mentor | Student |
+| POST | `/mentorship/requests/{id}/accept` | Accept a request (targeted mentor only, capacity enforced) | Alumni |
+| POST | `/mentorship/requests/{id}/decline` | Decline a request (targeted mentor only) | Alumni |
+| POST | `/mentorship/requests/{id}/cancel` | Cancel your own pending request | Student |
+
+Request actions are party-scoped. A user who is not the student or the targeted mentor gets
+`404` (not `403`) so the endpoint never confirms that someone else's request exists; a party who
+lacks the required role gets `403`.
+
 ---
 
 ## How the Readiness Score Works (Phase 4)
@@ -240,6 +270,70 @@ regenerating archives the previous one.
 
 ---
 
+## How the Assessments Work (Phase 8)
+
+**Question bank.** A small, curated bank lives in `backend/app/data/assessments.py`
+(10 assessments, 38 questions, 19 canonical skills, 2 questions per skill). Every assessment is
+tagged `source="curated"`; no official certification or external item bank is claimed.
+`validate_assessment_bank()` is asserted by the test suite, so a malformed or duplicated
+question fails the build rather than reaching a student.
+
+**Grading is deterministic.**
+
+```
+score_percent = round(100 × correct answers / total questions)
+skill passed  = round(100 × correct answers for that skill / that skill's questions) ≥ 70
+```
+
+* Answers are compared by index — no fuzzy or semantic matching.
+* A question left unanswered counts as **incorrect**.
+* Each skill is graded on its own questions, so a skill can be evidenced even if the overall
+  score is below 70.
+* Duplicate answers and out-of-range indices are rejected with `400`; re-submitting a graded
+  attempt is `409`.
+
+**Answers never leak.** The public question schema deliberately has no answer field. Correct
+answers and explanations are only returned *after* submission, in the review section.
+
+**Evidence requires explicit confirmation.** A pass only *suggests* skills. The student chooses
+which ones to add, and the server re-checks that each requested skill was actually passed in
+that attempt (`400` otherwise) before writing it to the profile with `source="assessment"`.
+Confirming preserves an existing stated level and never discards it. Conversely, re-running the
+Phase 3 resume review preserves assessment-evidenced skills rather than overwriting them.
+
+Verified evidence feeds straight back into the Phase 4 readiness score.
+
+---
+
+## How Mentor Matching Works (Phase 8)
+
+The match score is a **deterministic weighted heuristic used to order a list** — it is *not* a
+probability, a prediction, or a promise of a good mentor. The API returns the full breakdown
+(`factors`) and a disclaimer, and `match_score == Σ factor.earned`.
+
+| Factor | Weight | Awarded when |
+|--------|--------|--------------|
+| `gap_overlap` | 40 | proportional to how many of the student's *outstanding* skills the mentor covers |
+| `same_college` | 20 | the mentor and student list the same college |
+| `experience` | 15 | proportional to years of experience, capped at 10 years |
+| `availability` | 15 | the mentor has `is_available_for_mentoring` set |
+| `capacity` | 10 | proportional to free mentee slots (`max_mentees − accepted`) |
+| **Total** | **100** | |
+
+* Skill matching normalises through the taxonomy and falls back to word-boundary matching for
+  free-text expertise, so `Java` does **not** match `javascript`.
+* A student with no target role simply scores `gap_overlap = 0`; everything else still applies.
+* Ties are broken deterministically (`−score`, `−overlap`, name, id), so the list is stable.
+* Mentors who are at capacity or unavailable are **still listed** — they are scored lower rather
+  than hidden, and the UI explains why.
+
+**Mentorship lifecycle.** A request records the match score as a snapshot at creation time.
+The target mentor can accept or decline; the student can cancel while it is pending. Accepting is
+refused with `409` once the mentor's `max_mentees` is reached. Duplicate pending or accepted
+requests for the same mentor are `409`, while a declined request may be re-sent.
+
+---
+
 ## Architecture
 
 ```
@@ -253,7 +347,10 @@ FastAPI Backend (:8000)
         ├── Services — business logic  (services/)
         │     ├── skill_gap_service    Phase 4 readiness (deterministic)
         │     ├── graph_service        Phase 5 dependency graph
-        │     └── roadmap_service      Phase 5 roadmap planning
+        │     ├── roadmap_service      Phase 5 roadmap planning
+        │     ├── assessment_service   Phase 8 grading & evidenced skills
+        │     ├── matching_service     Phase 8 mentor ranking (deterministic)
+        │     └── mentorship_service   Phase 8 request lifecycle & rules
         ├── JWT auth + bcrypt          (utils/)
         │
         ├──▶ SQLite (dev) / PostgreSQL (prod)
@@ -270,16 +367,18 @@ careergraph-ai/
 │   └── src/
 │       ├── components/     Navbar, shared UI
 │       ├── pages/          Landing, Login, Register, Dashboard, Profile,
-│       │                   Resume, CareerGap (Phase 4), Roadmap (Phase 5)
+│       │                   Resume, CareerGap (Phase 4), Roadmap (Phase 5),
+│       │                   Assessments & Mentors (Phase 8)
 │       ├── services/       api.js — single HTTP layer
 │       └── setupTests.js   Vitest + Testing Library setup
 ├── backend/
 │   ├── alembic/            Migration environment + revisions
 │   └── app/
 │       ├── config.py       All settings from .env
-│       ├── data/           Curated taxonomy, occupations, prerequisites
+│       ├── data/           Curated taxonomy, occupations, prerequisites, assessments
 │       ├── database/       SQLAlchemy engine & session
-│       ├── models/         DB models (user, profile, resume, roadmap)
+│       ├── models/         DB models (user, profile, resume, roadmap,
+│       │                   assessment, mentorship)
 │       ├── schemas/        Pydantic request/response models
 │       ├── routes/         API endpoints
 │       ├── services/       Business logic
@@ -299,7 +398,7 @@ cd backend
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**145 tests pass** (Phase 1–5), including:
+**213 tests pass** (Phases 1–5 and 8), including:
 
 | File | Focus |
 |------|-------|
@@ -310,7 +409,19 @@ cd backend
 | `test_phase4_skill_gap.py` | Taxonomy integrity, scoring exactness, API behaviour |
 | `test_phase5_graph.py` | Duplicate/self-loop rejection, bounded traversal, ordering, cycles, Neo4j→memory fallback |
 | `test_phase5_roadmap.py` | Roadmap ordering, persistence, progress, ownership isolation |
-| `test_journey_e2e.py` | The full 13-step critical journey |
+| `test_phase8_assessments.py` | Bank integrity, exact grading, answer-leak prevention, evidence confirmation rules |
+| `test_phase8_matching.py` | Score == Σ factors, word-boundary expertise matching, ranking, request authorization & capacity |
+| `test_journey_e2e.py` | The full 13-step Phase 1–5 journey **and** the Phase 8 assess → evidence → mentor → accept journey |
+
+The full verification sequence used before committing was:
+
+```bash
+python -m pytest -q                     # 213 passed
+python -m alembic upgrade head          # 0001 → 0002 → 0003
+python -m alembic check                 # "No new upgrade operations detected."
+python -m alembic downgrade base        # clean rollback
+python -m alembic upgrade head          # re-applies cleanly
+```
 
 ### Frontend
 
@@ -321,9 +432,10 @@ npm run lint        # oxlint
 npm run build       # production build
 ```
 
-**14 frontend tests pass**, covering the API error-normalisation layer and the Phase 4 & 5 UI
-(readiness rendering, ordered roadmap steps, prerequisite relationships, progress updates,
-partial-roadmap warnings, empty states).
+**29 frontend tests pass**, covering the API error-normalisation layer and the UI for Phases 4, 5
+and 8 (readiness rendering, ordered roadmap steps, prerequisite relationships, progress updates,
+partial-roadmap warnings, assessment catalogue/runner/grading/confirmation, and mentor ranking,
+requesting, accepting and declining).
 
 ---
 
@@ -354,3 +466,14 @@ but it must never *invent* it — and the score is explicitly not a probability 
 It makes the graph behaviour fully deterministic and testable with zero infrastructure, while the
 Neo4j adapter provides a production path. The adapter is present but flagged unverified until a
 live instance is available.
+
+**Why can a passed assessment only *suggest* skills instead of writing them?**
+Grading is automatic but the profile is the student's own record. The server re-checks that each
+requested skill was genuinely passed in that attempt, then the student decides what to add —
+so evidence cannot be forged by a crafted request, and nothing is silently rewritten.
+
+**Why is the mentor match score not a percentage of success?**
+It is a weighted ordering heuristic over observable facts (skill overlap, shared college,
+experience, availability, free slots). Calling it a probability of a good match would be
+unfounded, so the API returns the itemised factors, the score always equals their sum, and a
+disclaimer travels with it.

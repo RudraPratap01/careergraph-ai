@@ -7,13 +7,14 @@
  *   - Skill inventory breakdown
  *   - Live alumni mentor directory preview
  *   - API & database health telemetry
+ *   - Career readiness, learning roadmap, assessments & mentorship (Phases 4–5, 8)
  *   - Progressive development roadmap
  */
 
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { healthAPI, profileAPI, resumeAPI, careerAPI, roadmapAPI } from '../services/api'
+import { healthAPI, profileAPI, resumeAPI, careerAPI, roadmapAPI, assessmentAPI, mentorshipAPI } from '../services/api'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -28,6 +29,8 @@ export default function DashboardPage() {
   const [latestResume, setLatestResume] = useState(null)
   const [gap, setGap] = useState(null)
   const [roadmap, setRoadmap] = useState(null)
+  const [assessments, setAssessments] = useState([])
+  const [mentorshipRequests, setMentorshipRequests] = useState([])
 
   useEffect(() => {
     // 1. Check backend health
@@ -37,7 +40,13 @@ export default function DashboardPage() {
       .catch(() => setHealth({ status: 'error', database: 'unreachable' }))
       .finally(() => setHealthLoading(false))
 
-    // 2. Fetch user profile
+    // 2. Phase 8: mentorship is available to students (sent) and alumni (received).
+    mentorshipAPI
+      .listRequests()
+      .then((res) => setMentorshipRequests(res.data))
+      .catch(() => setMentorshipRequests([]))
+
+    // 3. Fetch user profile
     profileAPI
       .getMeProfile()
       .then((res) => {
@@ -50,6 +59,8 @@ export default function DashboardPage() {
           careerAPI.getGapAnalysis().then((gRes) => setGap(gRes.data)).catch(() => setGap(null))
           // Phase 5: current roadmap (404 if not generated yet).
           roadmapAPI.getCurrent().then((rRes) => setRoadmap(rRes.data)).catch(() => setRoadmap(null))
+          // Phase 8: assessment attempt history (student-only endpoint).
+          assessmentAPI.history().then((aRes) => setAssessments(aRes.data)).catch(() => setAssessments([]))
         }
       })
       .catch((err) => console.error('Failed to load profile:', err))
@@ -59,6 +70,10 @@ export default function DashboardPage() {
   const completion = profileData?.completion_percentage ?? 0
   const studentProfile = profileData?.student_profile
   const alumniProfile = profileData?.alumni_profile
+  const completedAssessments = assessments.filter((a) => a.status === 'completed')
+  const latestAssessment = completedAssessments[0]
+  const pendingRequests = mentorshipRequests.filter((r) => r.status === 'pending')
+  const activeMentorships = mentorshipRequests.filter((r) => r.status === 'accepted')
 
   return (
     <div className="page-container">
@@ -70,8 +85,8 @@ export default function DashboardPage() {
               Welcome, {user?.full_name?.split(' ')[0]} 👋
             </h1>
             <p className="section-subtitle" style={{ marginBottom: 0 }}>
-              Phases 1–5 are active: foundation, profiles, resume intelligence, skill-gap
-              readiness, and prerequisite-aware learning roadmaps.
+              Phases 1–5 and Phase 8 are active: foundation, profiles, resume intelligence,
+              skill-gap readiness, learning roadmaps, skill assessments, and alumni mentoring.
             </p>
           </div>
 
@@ -479,6 +494,94 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Skill Assessments Card (Phase 8) */}
+          {isStudent && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>📝</span> Skill Assessments
+                </h3>
+                <Link to="/assessments" style={{ fontSize: '0.8rem', color: 'var(--color-brand-light)' }}>
+                  {completedAssessments.length ? 'View all →' : 'Take one →'}
+                </Link>
+              </div>
+
+              {latestAssessment ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.75rem', fontWeight: 800 }}>{latestAssessment.score_percent}%</span>
+                    <span className={`badge ${latestAssessment.passed ? 'badge-strong' : 'badge-medium'}`}>
+                      {latestAssessment.passed ? 'Passed' : 'Not passed'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+                    {latestAssessment.assessment_name} • {completedAssessments.length} attempt
+                    {completedAssessments.length === 1 ? '' : 's'} completed
+                  </div>
+                  {latestAssessment.passed_skills?.length > 0 && (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--color-brand-light)', marginTop: '0.4rem' }}>
+                      Evidenced: {latestAssessment.passed_skills.join(', ')}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--color-bg-elevated)', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                    Pass a short curated check to add a skill to your profile as verified evidence.
+                  </p>
+                  <Link to="/assessments" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>
+                    Browse Assessments
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Mentorship Card (Phase 8) */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>🤝</span> {isStudent ? 'Mentorship' : 'Mentorship Requests'}
+              </h3>
+              <Link to="/mentors" style={{ fontSize: '0.8rem', color: 'var(--color-brand-light)' }}>
+                {isStudent ? 'Find a mentor →' : 'Review requests →'}
+              </Link>
+            </div>
+
+            {isStudent ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                {activeMentorships.length > 0 && (
+                  <div style={{ marginBottom: '0.35rem' }}>
+                    {activeMentorships.length} accepted mentorship
+                    {activeMentorships.length === 1 ? '' : 's'}:{' '}
+                    {activeMentorships.map((r) => r.alumni_name || `Mentor #${r.alumni_id}`).join(', ')}
+                  </div>
+                )}
+                <div>
+                  {pendingRequests.length} pending request{pendingRequests.length === 1 ? '' : 's'} sent
+                </div>
+                {activeMentorships.length === 0 && pendingRequests.length === 0 && (
+                  <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
+                    Mentors are ranked against the skills you still need for your target role.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                {pendingRequests.length > 0 ? (
+                  <div>
+                    <strong>{pendingRequests.length}</strong> pending request
+                    {pendingRequests.length === 1 ? '' : 's'} awaiting your decision.
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--color-text-muted)' }}>
+                    No pending requests right now.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Development Roadmap Progress Card */}
           <div className="card">
             <div style={{ fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -493,7 +596,7 @@ export default function DashboardPage() {
                 { n: 5, label: 'Skill Graph & Learning Roadmap', done: true },
                 { n: 6, label: 'GitHub + LinkedIn Verification', done: false },
                 { n: 7, label: 'RAG Knowledge Base (OpenRouter)', done: false },
-                { n: 8, label: 'Assessments & Alumni Matching', done: false },
+                { n: 8, label: 'Assessments & Alumni Matching', done: true },
               ].map((p) => (
                 <div key={p.n} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem' }}>
                   <span style={{
@@ -519,9 +622,12 @@ export default function DashboardPage() {
 
         {/* System Alert Info */}
         <div className="alert alert-info">
-          <strong>✓ Phases 1–5 are live</strong> — authentication, profiles, resume intelligence
-          (PDF/DOCX/TXT parsing with confidence &amp; evidence), deterministic skill-gap readiness,
-          and a prerequisite-aware learning roadmap backed by a curated skill-dependency graph.
+          <strong>✓ Phases 1–5 and Phase 8 are live</strong> — authentication, profiles, resume
+          intelligence (PDF/DOCX/TXT parsing with confidence &amp; evidence), deterministic
+          skill-gap readiness, a prerequisite-aware learning roadmap backed by a curated
+          skill-dependency graph, curated skill assessments, and deterministic alumni matching
+          with enforced mentorship capacity. Phase 6 (GitHub + LinkedIn) and Phase 7 (RAG
+          knowledge base) are not implemented yet.
         </div>
       </div>
     </div>
