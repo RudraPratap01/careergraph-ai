@@ -67,6 +67,7 @@ export default function Navbar() {
                   <NavLink to="/career-gap" active={isActive('/career-gap')}>Skill Gap</NavLink>
                   <NavLink to="/roadmap" active={isActive('/roadmap')}>Roadmap</NavLink>
                   <NavLink to="/assessments" active={isActive('/assessments')}>Assessments</NavLink>
+                  <NavLink to="/verification" active={isActive('/verification')}>Verification</NavLink>
                   <NavLink to="/mentors" active={isActive('/mentors')}>Mentors</NavLink>
                 </>
               )}

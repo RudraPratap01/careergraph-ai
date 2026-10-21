@@ -4,8 +4,9 @@
 
 A career intelligence platform for BTech / final-year students. It analyses skills from
 multiple sources, computes skill gaps against target occupations, generates
-prerequisite-ordered learning roadmaps, verifies skills with short assessments, and ranks
-alumni mentors against the gaps that remain.
+prerequisite-ordered learning roadmaps, verifies skills with short assessments, turns public
+GitHub repositories into evidence-backed skill suggestions, and ranks alumni mentors against
+the gaps that remain.
 
 ---
 
@@ -21,7 +22,7 @@ not what is planned.
 | Phase 3 | ✅ Complete | Resume Intelligence — PDF/DOCX/TXT parsing, skill extraction with confidence & evidence, student review & confirmation |
 | Phase 4 | ✅ Complete | Skill Gaps & Career Readiness — occupation catalog, deterministic readiness scoring |
 | Phase 5 | ✅ Complete | Skill Graph & Learning Roadmap — dependency graph, prerequisite-ordered roadmaps, progress tracking |
-| Phase 6 | ⛔ Not started | GitHub + LinkedIn verification |
+| Phase 6 | ✅ Complete | GitHub + LinkedIn — live public GitHub verification with evidence-backed skill suggestions; LinkedIn stored as a self-declared (unverified) link |
 | Phase 7 | ⛔ Not started | RAG knowledge base + LLM explanations (OpenRouter) |
 | Phase 8 | ✅ Complete | Skill Assessments & Alumni Matching — curated question bank, deterministic grading, evidenced skills, ranked mentors, mentorship requests |
 
@@ -35,7 +36,15 @@ not what is planned.
   tested graph backend is the built-in in-memory graph.
 * **Learning resources / course links** — roadmaps do *not* include course URLs. No curated
   resource dataset exists, so no links are invented.
-* **GitHub / LinkedIn ingestion, RAG** — not started.
+* **GitHub** — verification uses the **public, unauthenticated** GitHub REST API only: no OAuth,
+  no personal access token, no private repositories, and no repository code is downloaded.
+  Unauthenticated calls are limited to 60 requests/hour per IP; when the limit is hit the API
+  returns `503` with an explicit message. Up to 100 of the account's most recently pushed public
+  repositories are analysed, and **forks are excluded** from all evidence.
+* **LinkedIn is not verified.** LinkedIn exposes no public API for reading a member's profile, so
+  a LinkedIn URL is stored as a *self-declared* link and always returned with `verified: false`.
+  The UI labels it "Unverified — self-declared".
+* **RAG / LLM explanations** — not started.
 * **spaCy / sentence-transformers** — not used. Skill extraction is regex matching against a
   curated in-repo taxonomy (see below).
 * **Adaptive / AI-generated assessments** — the Phase 8 question bank is a small curated set
@@ -54,6 +63,7 @@ not what is planned.
 | Migrations | Alembic |
 | Graph | In-memory backend (default, tested); optional Neo4j backend (unverified) |
 | Skill extraction | Regex matching + curated taxonomy (no ML models) |
+| GitHub verification | Public GitHub REST API, unauthenticated (no OAuth/token) |
 | Auth | JWT (HS256) + bcrypt |
 
 ---
@@ -100,8 +110,9 @@ python -m alembic current             # show current revision
 python -m alembic check               # verify models match the schema
 ```
 
-Revisions: `0001_baseline` (users, profiles, resumes), `0002_roadmaps` (Phase 5 tables) and
-`0003_assessments_mentorship` (Phase 8 tables). All are additive; nothing is dropped or reset.
+Revisions: `0001_baseline` (users, profiles, resumes), `0002_roadmaps` (Phase 5 tables),
+`0003_assessments_mentorship` (Phase 8 tables) and `0004_github_verifications` (Phase 6 table).
+All are additive; nothing is dropped or reset.
 
 ---
 
@@ -215,6 +226,23 @@ Request actions are party-scoped. A user who is not the student or the targeted 
 `404` (not `403`) so the endpoint never confirms that someone else's request exists; a party who
 lacks the required role gets `403`.
 
+### GitHub Verification & LinkedIn (Phase 6)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/verification/github` | Fetch a public GitHub account + repositories, store the analysis | Student |
+| GET | `/verification/github` | The stored verification (`404` if none) | Student |
+| DELETE | `/verification/github` | Unlink the account; GitHub-sourced skills become self-reported | Student |
+| POST | `/verification/github/confirm-skills` | Add selected *detected* skills to the profile | Student |
+| POST | `/verification/linkedin` | Save a LinkedIn profile URL as **self-declared, unverified** | Student |
+| GET | `/verification/linkedin` | The stored LinkedIn link (`404` if none) | Student |
+| GET | `/verification/status` | Combined GitHub + LinkedIn status | Student |
+
+One GitHub login can be linked to only one CareerGraph account (`409` on a second claim, checked
+case-insensitively). GitHub failures are mapped honestly: unknown account → `404`, exhausted rate
+limit → `503`, network timeout/DNS failure → `503`, any other upstream error → `502`. A
+verification is never reported as successful unless GitHub actually returned the data.
+
 ---
 
 ## How the Readiness Score Works (Phase 4)
@@ -267,6 +295,51 @@ reloads them via Cypher, then reuses the same algorithms.
 
 Refreshing preserves progress for steps that still exist. Only one roadmap is active per user;
 regenerating archives the previous one.
+
+---
+
+## How GitHub Verification Works (Phase 6)
+
+**What is verified.** The account itself: login, display name, bio, avatar, public repository
+count, followers and account age, plus the metadata of up to 100 recently pushed public
+repositories. This data is fetched live from `https://api.github.com` at request time.
+
+**What is *not* verified.** The inferred skills are a **deterministic heuristic over repository
+metadata**, not a statement about the quality of the code:
+
+* A repository's GitHub `primary language` is mapped to a canonical taxonomy skill through a
+  small curated table (`Python → Python`, `Shell → Shell / Bash`, `Dockerfile → Docker`, …).
+  Unmappable languages (`Jupyter Notebook`, `HCL`, `Objective-C`, …) are skipped, never guessed.
+* Repository **topics** are normalised through the same taxonomy alias index
+  (`machine-learning → Machine Learning`, `nextjs → Next.js`, `ci-cd → CI/CD`).
+* **Forks are excluded** from every piece of evidence.
+* A skill used by both the language and a topic in the same repository counts that repository once.
+
+**Confidence and level are deterministic.**
+
+```
+repositories using the skill:  1 → 0.60   2 → 0.70   3–4 → 0.80   5+ → 0.90
++ 0.05 if total stars ≥ 5, capped at 0.95
+
+proficiency: 4+ repos or ≥10 stars → advanced
+             2+ repos or ≥ 1 star   → intermediate
+             otherwise              → beginner
+```
+
+The API returns, per skill, the confidence, repository count, repository names (up to 10), star
+count, sources (`language` / `topic`) and a human-readable evidence string. Skills are sorted by
+`(−confidence, −repo_count, name)`, so the same repositories always produce the same output.
+
+**Evidence requires explicit confirmation.** Verification only *suggests* skills. The server
+re-checks that every requested skill was detected by the stored verification (`400` otherwise)
+before writing it with `source="github"`. Confirming keeps any existing stated level, never
+downgrades assessment evidence, and does not touch remote/detected state. A later resume review
+preserves GitHub-evidenced skills. Unlinking the account keeps the skills but downgrades them to
+`source="self"`, because the evidence behind them is gone.
+
+**LinkedIn.** There is no public API for a member's profile, so nothing is inferred from a
+LinkedIn URL. It is validated (`linkedin.com/in/<slug>`), canonicalised, stored on the profile,
+and always reported as `verified: false`.
 
 ---
 
@@ -350,7 +423,8 @@ FastAPI Backend (:8000)
         │     ├── roadmap_service      Phase 5 roadmap planning
         │     ├── assessment_service   Phase 8 grading & evidenced skills
         │     ├── matching_service     Phase 8 mentor ranking (deterministic)
-        │     └── mentorship_service   Phase 8 request lifecycle & rules
+        │     ├── mentorship_service   Phase 8 request lifecycle & rules
+        │     └── github_service       Phase 6 GitHub API, evidence & LinkedIn
         ├── JWT auth + bcrypt          (utils/)
         │
         ├──▶ SQLite (dev) / PostgreSQL (prod)
@@ -368,7 +442,7 @@ careergraph-ai/
 │       ├── components/     Navbar, shared UI
 │       ├── pages/          Landing, Login, Register, Dashboard, Profile,
 │       │                   Resume, CareerGap (Phase 4), Roadmap (Phase 5),
-│       │                   Assessments & Mentors (Phase 8)
+│       │                   Verification (Phase 6), Assessments & Mentors (Phase 8)
 │       ├── services/       api.js — single HTTP layer
 │       └── setupTests.js   Vitest + Testing Library setup
 ├── backend/
@@ -378,7 +452,7 @@ careergraph-ai/
 │       ├── data/           Curated taxonomy, occupations, prerequisites, assessments
 │       ├── database/       SQLAlchemy engine & session
 │       ├── models/         DB models (user, profile, resume, roadmap,
-│       │                   assessment, mentorship)
+│       │                   assessment, mentorship, github_verification)
 │       ├── schemas/        Pydantic request/response models
 │       ├── routes/         API endpoints
 │       ├── services/       Business logic
@@ -398,7 +472,7 @@ cd backend
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**213 tests pass** (Phases 1–5 and 8), including:
+**306 tests pass** (Phases 1–6 and 8), including:
 
 | File | Focus |
 |------|-------|
@@ -409,6 +483,7 @@ cd backend
 | `test_phase4_skill_gap.py` | Taxonomy integrity, scoring exactness, API behaviour |
 | `test_phase5_graph.py` | Duplicate/self-loop rejection, bounded traversal, ordering, cycles, Neo4j→memory fallback |
 | `test_phase5_roadmap.py` | Roadmap ordering, persistence, progress, ownership isolation |
+| `test_phase6_github.py` | Deterministic repository analysis, fork exclusion, transport error mapping, account-claim isolation, evidence-only confirmation, LinkedIn unverified semantics |
 | `test_phase8_assessments.py` | Bank integrity, exact grading, answer-leak prevention, evidence confirmation rules |
 | `test_phase8_matching.py` | Score == Σ factors, word-boundary expertise matching, ranking, request authorization & capacity |
 | `test_journey_e2e.py` | The full 13-step Phase 1–5 journey **and** the Phase 8 assess → evidence → mentor → accept journey |
@@ -416,8 +491,8 @@ cd backend
 The full verification sequence used before committing was:
 
 ```bash
-python -m pytest -q                     # 213 passed
-python -m alembic upgrade head          # 0001 → 0002 → 0003
+python -m pytest -q                     # 306 passed
+python -m alembic upgrade head          # 0001 → 0002 → 0003 → 0004
 python -m alembic check                 # "No new upgrade operations detected."
 python -m alembic downgrade base        # clean rollback
 python -m alembic upgrade head          # re-applies cleanly
@@ -432,10 +507,11 @@ npm run lint        # oxlint
 npm run build       # production build
 ```
 
-**29 frontend tests pass**, covering the API error-normalisation layer and the UI for Phases 4, 5
-and 8 (readiness rendering, ordered roadmap steps, prerequisite relationships, progress updates,
-partial-roadmap warnings, assessment catalogue/runner/grading/confirmation, and mentor ranking,
-requesting, accepting and declining).
+**38 frontend tests pass**, covering the API error-normalisation layer and the UI for Phases 4, 5,
+6 and 8 (readiness rendering, ordered roadmap steps, prerequisite relationships, progress updates,
+partial-roadmap warnings, GitHub verification and evidence confirmation, LinkedIn unverified
+labelling, assessment catalogue/runner/grading/confirmation, and mentor ranking, requesting,
+accepting and declining).
 
 ---
 
@@ -477,3 +553,15 @@ It is a weighted ordering heuristic over observable facts (skill overlap, shared
 experience, availability, free slots). Calling it a probability of a good match would be
 unfounded, so the API returns the itemised factors, the score always equals their sum, and a
 disclaimer travels with it.
+
+**Why is GitHub "verified" but LinkedIn only "self-declared"?**
+GitHub publishes a public REST API, so the account and its repository metadata can be fetched and
+cross-checked at request time. LinkedIn exposes no public API for reading a member's profile, so
+the only honest option is to store the URL the student supplies and label it clearly. Claiming
+otherwise would be a fake integration.
+
+**Why infer skills from repository metadata instead of reading the code?**
+Reading code would be slow, expensive and still subjective. Primary languages and topics are
+observable, deterministic metadata. Every suggestion carries the repositories and stars that
+back it plus a confidence score, and the student must confirm it — so the system never silently
+asserts competence it cannot demonstrate.

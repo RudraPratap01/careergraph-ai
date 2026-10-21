@@ -148,6 +148,17 @@ export const mentorshipAPI = {
   cancel: (requestId) => api.post(`/mentorship/requests/${requestId}/cancel`),
 }
 
+// ─── GitHub Verification & LinkedIn link (Phase 6) ───────────────────────────
+export const verificationAPI = {
+  getStatus: () => api.get('/verification/status'),
+  verifyGithub: (username) => api.post('/verification/github', { username }),
+  getGithub: () => api.get('/verification/github'),
+  disconnectGithub: () => api.delete('/verification/github'),
+  confirmSkills: (skills) => api.post('/verification/github/confirm-skills', { skills }),
+  saveLinkedin: (url) => api.post('/verification/linkedin', { url }),
+  getLinkedin: () => api.get('/verification/linkedin'),
+}
+
 // ─── Health ──────────────────────────────────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/health'),

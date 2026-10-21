@@ -7,14 +7,14 @@
  *   - Skill inventory breakdown
  *   - Live alumni mentor directory preview
  *   - API & database health telemetry
- *   - Career readiness, learning roadmap, assessments & mentorship (Phases 4–5, 8)
+ *   - Career readiness, learning roadmap, assessments, GitHub verification & mentorship (Phases 4–6, 8)
  *   - Progressive development roadmap
  */
 
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { healthAPI, profileAPI, resumeAPI, careerAPI, roadmapAPI, assessmentAPI, mentorshipAPI } from '../services/api'
+import { healthAPI, profileAPI, resumeAPI, careerAPI, roadmapAPI, assessmentAPI, mentorshipAPI, verificationAPI } from '../services/api'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [roadmap, setRoadmap] = useState(null)
   const [assessments, setAssessments] = useState([])
   const [mentorshipRequests, setMentorshipRequests] = useState([])
+  const [verification, setVerification] = useState(null)
 
   useEffect(() => {
     // 1. Check backend health
@@ -61,6 +62,8 @@ export default function DashboardPage() {
           roadmapAPI.getCurrent().then((rRes) => setRoadmap(rRes.data)).catch(() => setRoadmap(null))
           // Phase 8: assessment attempt history (student-only endpoint).
           assessmentAPI.history().then((aRes) => setAssessments(aRes.data)).catch(() => setAssessments([]))
+          // Phase 6: GitHub verification & self-declared LinkedIn link.
+          verificationAPI.getStatus().then((vRes) => setVerification(vRes.data)).catch(() => setVerification(null))
         }
       })
       .catch((err) => console.error('Failed to load profile:', err))
@@ -85,8 +88,9 @@ export default function DashboardPage() {
               Welcome, {user?.full_name?.split(' ')[0]} 👋
             </h1>
             <p className="section-subtitle" style={{ marginBottom: 0 }}>
-              Phases 1–5 and Phase 8 are active: foundation, profiles, resume intelligence,
-              skill-gap readiness, learning roadmaps, skill assessments, and alumni mentoring.
+              Phases 1–6 and Phase 8 are active: foundation, profiles, resume intelligence,
+              skill-gap readiness, learning roadmaps, GitHub verification, skill assessments,
+              and alumni mentoring.
             </p>
           </div>
 
@@ -537,6 +541,50 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* GitHub Verification Card (Phase 6) */}
+          {isStudent && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🐙</span> GitHub Verification
+                </h3>
+                <Link to="/verification" style={{ fontSize: '0.8rem', color: 'var(--color-brand-light)' }}>
+                  {verification?.github ? 'Review evidence →' : 'Verify →'}
+                </Link>
+              </div>
+
+              {verification?.github ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                      @{verification.github.account.username}
+                    </span>
+                    <span className="badge badge-strong">✓ Account verified</span>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+                    {verification.github.repos_analyzed} repositories analysed •{' '}
+                    {verification.github.skills.length} skills detected
+                  </div>
+                  {verification.github.relevant_to_target?.length > 0 && (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--color-brand-light)' }}>
+                      Matches your target role:{' '}
+                      {verification.github.relevant_to_target.slice(0, 4).join(', ')}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--color-bg-elevated)', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                    Verify your GitHub account to turn real repositories into evidence-backed skill suggestions.
+                  </p>
+                  <Link to="/verification" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>
+                    Verify GitHub
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Mentorship Card (Phase 8) */}
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -594,7 +642,7 @@ export default function DashboardPage() {
                 { n: 3, label: 'Resume Intelligence', done: true },
                 { n: 4, label: 'Skill Gaps & Career Readiness', done: true },
                 { n: 5, label: 'Skill Graph & Learning Roadmap', done: true },
-                { n: 6, label: 'GitHub + LinkedIn Verification', done: false },
+                { n: 6, label: 'GitHub + LinkedIn Verification', done: true },
                 { n: 7, label: 'RAG Knowledge Base (OpenRouter)', done: false },
                 { n: 8, label: 'Assessments & Alumni Matching', done: true },
               ].map((p) => (
@@ -622,12 +670,13 @@ export default function DashboardPage() {
 
         {/* System Alert Info */}
         <div className="alert alert-info">
-          <strong>✓ Phases 1–5 and Phase 8 are live</strong> — authentication, profiles, resume
+          <strong>✓ Phases 1–6 and Phase 8 are live</strong> — authentication, profiles, resume
           intelligence (PDF/DOCX/TXT parsing with confidence &amp; evidence), deterministic
           skill-gap readiness, a prerequisite-aware learning roadmap backed by a curated
-          skill-dependency graph, curated skill assessments, and deterministic alumni matching
-          with enforced mentorship capacity. Phase 6 (GitHub + LinkedIn) and Phase 7 (RAG
-          knowledge base) are not implemented yet.
+          skill-dependency graph, GitHub account verification with evidence-backed skill
+          suggestions, a self-declared (unverified) LinkedIn link, curated skill assessments,
+          and deterministic alumni matching with enforced mentorship capacity. Phase 7 (RAG
+          knowledge base) is not implemented yet.
         </div>
       </div>
     </div>
