@@ -157,11 +157,13 @@ def confirm_student_skills(
     # matching the order of request.skills so later items take precedence).
     seen: dict = {}
 
-    # Skills already evidenced by a passed assessment (Phase 8) are preserved at
-    # the front of the list: reviewing a resume must not discard verified
-    # evidence. A resume text match never downgrades an evidenced skill.
+    # Skills already evidenced by a passed assessment (Phase 8) or a verified
+    # GitHub account (Phase 6) are preserved at the front of the list: reviewing a
+    # resume must not discard verified evidence. A resume text match never
+    # downgrades an evidenced skill.
+    evidenced_sources = ("assessment", "github")
     for entry in profile.skills or []:
-        if isinstance(entry, dict) and entry.get("source") == "assessment":
+        if isinstance(entry, dict) and entry.get("source") in evidenced_sources:
             key = str(entry.get("name", "")).strip().lower()
             if key:
                 seen[key] = dict(entry)
@@ -171,7 +173,7 @@ def confirm_student_skills(
         if not name_key:
             continue
         existing = seen.get(name_key)
-        if existing is not None and existing.get("source") == "assessment":
+        if existing is not None and existing.get("source") in evidenced_sources:
             continue
         seen[name_key] = {
             "name": skill_item.name.strip(),

@@ -10,7 +10,15 @@ from sqlalchemy.pool import StaticPool
 
 from app.database.session import Base, get_db
 from app.main import app
-from app.models import user, profile, resume, roadmap, assessment, mentorship  # noqa: F401
+from app.models import (  # noqa: F401
+    user,
+    profile,
+    resume,
+    roadmap,
+    assessment,
+    mentorship,
+    github_verification,
+)
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(

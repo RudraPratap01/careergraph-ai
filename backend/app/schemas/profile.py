@@ -16,10 +16,11 @@ class SkillItem(BaseModel):
     level: str = Field("intermediate", pattern="^(beginner|intermediate|advanced)$")
     source: str = Field(
         "self",
-        pattern="^(self|resume|assessment)$",
+        pattern="^(self|resume|assessment|github)$",
         description=(
             "Where the skill came from: self-reported ('self'), parsed from a "
-            "resume ('resume'), or evidenced by a passed assessment ('assessment')."
+            "resume ('resume'), evidenced by a passed assessment ('assessment'), "
+            "or evidenced by a verified GitHub account ('github')."
         ),
     )
 

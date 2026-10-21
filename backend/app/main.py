@@ -23,6 +23,7 @@ from app.routes.mentorship import router as mentorship_router
 from app.routes.profile import router as profile_router
 from app.routes.resume import router as resume_router
 from app.routes.roadmap import router as roadmap_router
+from app.routes.verification import router as verification_router
 
 settings = get_settings()
 
@@ -58,9 +59,9 @@ app.include_router(graph_router)      # Phase 5 — skill dependency graph
 app.include_router(roadmap_router)    # Phase 5 — learning roadmap
 app.include_router(assessments_router)  # Phase 8 — skill assessments
 app.include_router(mentorship_router)   # Phase 8 — alumni matching & mentorship
+app.include_router(verification_router)  # Phase 6 — GitHub verification & LinkedIn link
 
 # Additional routers will be registered here in later phases:
-# app.include_router(github_router)    # Phase 6
 # app.include_router(rag_router)       # Phase 7
 
 
