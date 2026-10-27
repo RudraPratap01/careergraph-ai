@@ -34,7 +34,8 @@ those questions into one workflow:
 - explain learning decisions with cited, curated sources.
 
 The deterministic career logic remains authoritative. The optional language model can explain
-retrieved evidence, but it cannot invent a skill, change a score or reorder a roadmap.
+retrieved evidence, but it cannot change stored skills, a readiness score or a roadmap order. Its
+answer is validated for citations and links, not for factual truth.
 
 **Project status:** functional local-development release; backend, frontend and live PostgreSQL +
 Neo4j integration checks are wired in CI. There is no hosted demo or production deployment in this
@@ -92,9 +93,11 @@ Screenshot provenance and the synthetic-data note are documented in
 ### What the advisor will not do
 
 - It will not calculate or change readiness.
-- It will not reorder a roadmap.
-- It will not invent course links, employers, salaries, certifications or personal facts.
-- It will not send resume files/text, names, emails, account IDs or tokens to a provider.
+- It will not change stored profile skills or reorder a roadmap.
+- It will not send stored resume text, profile names/emails, account IDs or tokens to a provider.
+  The typed question itself is sent, so do not enter sensitive personal data in it.
+- It rejects external links and requires valid citations, but citation validation is not a truth
+  guarantee.
 - If retrieval finds no supporting evidence, it will refuse to answer from unsupported sources.
 
 ## How it works

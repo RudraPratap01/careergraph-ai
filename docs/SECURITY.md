@@ -68,8 +68,9 @@ claim of a security audit or certification.
   - target occupation and canonical skill names;
   - deterministic gap summary and roadmap step names;
   - retrieved curated excerpts with source IDs.
-- Resume files/text, names, email addresses, account IDs, tokens and raw profile records are not
-  included in the LLM prompt.
+- Stored resume files/text, profile names/emails, account IDs, tokens and raw profile records are
+  not included in the LLM prompt. The typed question itself is included, so users must not enter
+  secrets or third-party personal data.
 - The backend validates the answer before accepting it: at least one valid `[S#]` citation, only
   retrieved citation IDs, no external URL, and 20-3000 characters. On validation failure, timeout,
   provider error or missing key, the deterministic extractive answer is returned with an explicit

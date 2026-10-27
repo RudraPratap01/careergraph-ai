@@ -41,7 +41,7 @@ At minimum:
 ```bash
 cd backend
 python -m pytest -q
-python -m alembic check
+python -m alembic check  # against a migrated, disposable database
 
 cd ../frontend
 npm run lint

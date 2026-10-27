@@ -106,8 +106,9 @@ flowchart TD
 
 **Prompt boundary.** When an OpenRouter key is configured, only the question, target occupation,
 canonical skill names, deterministic gap summary, roadmap step names and retrieved excerpts are
-sent. Resume files/text, names, email addresses, account IDs and tokens are not included. The key
-is read by the backend only and is never returned by `/intelligence/status`.
+sent. Stored resume files/text, profile names/emails, account IDs and tokens are not included. The
+typed question is included, so it must not contain secrets or third-party personal data. The key is
+read by the backend only and is never returned by `/intelligence/status`.
 
 **Validation.** An LLM answer is accepted only when it contains at least one valid `[S#]` citation,
 cites only IDs from the retrieved set, contains no external URL, and is between 20 and 3000
