@@ -36,6 +36,8 @@ claim of a security audit or certification.
   authenticated user or to the parties in the relationship.
 - Requests for another user's owned roadmap or mentorship record use `404` rather than confirming
   that the record exists.
+- Public profile and alumni listing endpoints intentionally expose only safe display fields (name,
+  role, profile details) and never return passwords, email addresses or tokens.
 - Assessment answers are not included in the public question schema and are only returned after a
   submission is graded.
 - Evidence confirmation is rechecked on the server. A client cannot claim a skill was passed,
@@ -48,6 +50,8 @@ claim of a security audit or certification.
 - Accepted formats are PDF, DOCX and TXT with a 10 MB limit.
 - Extraction happens in the backend against the curated taxonomy. No external AI/NLP service
   receives the file.
+- No anti-malware scanner is included. Treat every upload as untrusted, keep the upload directory
+  outside the web root, and add a scanner or quarantine step where required.
 - Resume files are runtime user data. Production storage must have access controls, backup policy
   and retention/deletion procedures.
 - The review flow carries existing profile skills forward and preserves assessment/GitHub
@@ -105,6 +109,10 @@ There is no bug-bounty program or response-time guarantee.
 
 - No formal security audit, penetration test or compliance certification has been performed.
 - No MFA, password reset, refresh-token rotation, audit log, per-user LLM quota or WAF is included.
+- Public registration accepts a client-supplied role, including `admin`, although the web UI shows
+  only student/alumni choices. Authentication also has no application-level throttling. This is not
+  safe for an untrusted deployment. Restrict registration roles and add rate limits at the proxy or
+  API gateway before exposing the service.
 - JWT in `localStorage` is exposed to XSS; deployment CSP and dependency hygiene are essential.
 - The public GitHub integration is unauthenticated and subject to GitHub's 60-request/hour IP rate
   limit.

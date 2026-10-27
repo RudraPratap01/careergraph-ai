@@ -161,6 +161,12 @@ service containers. If you use Compose:
 
 ## Release checklist
 
+Before inviting untrusted users, restrict `/auth/register` so clients cannot assign themselves the
+`admin` role. The current development API accepts a client-supplied role, including `admin`, even
+though the web UI exposes only student/alumni choices. It also has no application-level
+authentication throttling. Put those controls at the proxy or API gateway, or change the
+application before release.
+
 1. Back up the target database and files; record `alembic current`.
 2. Set production secrets and exact CORS origins; keep `DEBUG=False`.
 3. Apply migrations and run `alembic check`.

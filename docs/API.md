@@ -21,9 +21,13 @@ running.
 | Method | Endpoint | Description | Auth |
 | --- | --- | --- | --- |
 | GET | `/health` | Server and database health | No |
-| POST | `/auth/register` | Create a student, alumni or admin account | No |
+| POST | `/auth/register` | Create an account; the web UI exposes student/alumni roles | No |
 | POST | `/auth/login` | Log in and receive a JWT | No |
 | GET | `/auth/me` | Current user | Yes |
+
+The current registration schema also accepts `admin`. The web UI exposes only student and alumni
+choices. Restrict that server-side role assignment before exposing registration to untrusted users;
+see [SECURITY.md](SECURITY.md).
 
 ## Profiles and mentors
 
@@ -32,7 +36,7 @@ running.
 | GET | `/profile/me` | Current profile and completion score | Yes |
 | PUT | `/profile/student` | Update student education, target role and skills | Student |
 | PUT | `/profile/alumni` | Update alumni role, expertise and availability | Alumni |
-| GET | `/profile/{user_id}` | Public profile | Yes |
+| GET | `/profile/{user_id}` | Public profile with safe fields only | No |
 | GET | `/alumni` | Available alumni mentors, optional `expertise` filter | No |
 
 ## Resume intelligence

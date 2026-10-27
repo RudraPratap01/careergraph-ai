@@ -12,7 +12,7 @@ optional external paths as distinct branches.
 
 | Layer | Responsibility | Main code |
 | --- | --- | --- |
-| React frontend | Role-aware routes, forms, loading/empty/error states, source cards, responsive navigation | `frontend/src/` |
+| React frontend | Authenticated route guards, forms, loading/empty/error states, source cards, responsive navigation | `frontend/src/` |
 | FastAPI API | HTTP validation, JWT authentication, role checks, response schemas, route ownership | `backend/app/routes/`, `backend/app/schemas/` |
 | Application services | Resume extraction, readiness, graph traversal, roadmap planning, assessment grading, mentor ranking, advisor retrieval and validation | `backend/app/services/` |
 | Relational database | Accounts, profiles, resume metadata/extracted text, roadmaps, assessments, mentorship requests and GitHub verification records | SQLAlchemy models and Alembic revisions |
@@ -26,7 +26,9 @@ optional external paths as distinct branches.
 
 - Vite + React 19 with lazy-loaded route pages and a catch-all 404.
 - The API layer in `frontend/src/services/api.js` attaches the JWT and normalizes FastAPI errors.
-- Protected routes are role-aware: student, alumni and admin areas are separated.
+- Protected routes require a session. The backend enforces student, alumni and admin role
+  boundaries; the SPA itself gates pages by authentication rather than rendering separate
+  role-specific route trees.
 - The advisor page exposes loading, empty, error and success states, retrieved source cards, and an
   explicit local-mode versus validated-LLM label.
 - The design system lives in `frontend/src/index.css`; the app collapses primary navigation at
@@ -82,15 +84,15 @@ container.
 ### Grounded Career Advisor
 
 Retrieval is local lexical BM25 over the curated in-repo corpus: 94 documents split into 102
-retrievable chunks, with `k1=1.5`, `b=0.75`, default top-k 6 and a minimum score threshold. The
-question alone is the retrieval query. The student's target role, readiness context and roadmap
-step names are supplied separately so an off-topic question is not made relevant by the saved
-profile.
+retrievable chunks, with `k1=1.5`, `b=0.75`, default top-k 6; the top lexical match must meet
+the minimum score threshold. The question alone is the retrieval query. The student's target role,
+readiness context and roadmap step names are supplied separately so an off-topic question is not
+made relevant by the saved profile.
 
 ```mermaid
 flowchart TD
     Q[Student question] --> R[Local BM25 retrieval over curated corpus]
-    R --> T{Evidence above threshold?}
+    R --> T{Top match above threshold?}
     T -- No --> N[No supported answer; no citations invented]
     T -- Yes --> E[Retrieved excerpts with S1...Sn IDs]
     E --> X[Deterministic extractive answer]
@@ -138,7 +140,7 @@ excerpts from the curated corpus. The advisor does not generate external course 
 1. The browser submits credentials to `/auth/login`.
 2. The backend verifies the bcrypt hash and returns a JWT.
 3. The frontend attaches the token to API calls.
-4. Profile routes load the current user and apply role-aware update logic.
+4. Profile update routes load the current user and apply role-aware update logic.
 
 ### Resume review and provenance
 
@@ -182,9 +184,9 @@ nor hurt.
 
 1. The authenticated student submits a question and optional occupation key.
 2. The service loads the saved target role and deterministic context.
-3. BM25 retrieves up to `RAG_TOP_K` curated chunks above `RAG_MIN_SCORE`.
-4. If no evidence is above threshold, the response explicitly refuses to answer from unsupported
-   sources.
+3. BM25 ranks up to `RAG_TOP_K` curated chunks; the top match must reach `RAG_MIN_SCORE`.
+4. If the top match is below the threshold, the response explicitly refuses to answer from
+   unsupported sources.
 5. The deterministic extractive answer is always constructed.
 6. If an LLM is configured, the minimal prompt is sent and the response is validated.
 7. The API returns the answer, mode, sources, deterministic context, privacy note and limitations.

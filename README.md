@@ -127,8 +127,8 @@ employment, and the API returns that disclaimer with the result.
   <img src="docs/assets/architecture.svg" alt="CareerGraph AI architecture: React frontend, FastAPI API, deterministic services, PostgreSQL/SQLite, optional Neo4j, curated corpus, and the grounded advisor with optional OpenRouter and citation validation" width="100%">
 </p>
 
-- **React 19 + Vite SPA** provides role-aware routes, dashboard, resume review, gap analysis,
-  roadmaps, assessments, verification, mentors and the advisor.
+- **React 19 + Vite SPA** provides authenticated route guards, dashboard, resume review, gap
+  analysis, roadmaps, assessments, verification, mentors and the advisor.
 - **FastAPI** owns HTTP validation, JWT authentication and ownership/role boundaries.
 - **Deterministic services** implement extraction, scoring, graph traversal, grading, ranking and
   roadmap ordering.
@@ -159,8 +159,9 @@ The detailed component boundaries, request flows and fallback behavior are in
 | GitHub evidence | Public unauthenticated GitHub REST API |
 | CI | GitHub Actions; Python 3.14, Node 22, PostgreSQL and Neo4j service containers |
 
-Versions come from `backend/requirements.txt` and `frontend/package.json`. Tailwind is used for
-preflight only; the application design system is custom CSS.
+Versions come from `backend/requirements.txt` and `frontend/package.json`. Tailwind CSS is
+integrated alongside a substantial custom CSS design system; the UI styles live in
+`frontend/src/index.css`.
 
 ## Quick start
 
@@ -380,8 +381,10 @@ careergraph-ai/
 - **Browser coverage.** QA was Chrome-only. Firefox, Safari, iOS, Lighthouse and screen-reader
   testing are not claimed.
 - **Authentication limitations.** JWT is stored in `localStorage`; there is no MFA, password reset,
-  refresh-token rotation or per-user LLM quota. Review [`docs/SECURITY.md`](docs/SECURITY.md)
-  before a public deployment.
+  refresh-token rotation or per-user LLM quota. The registration API accepts a client-supplied role,
+  including `admin` (the web UI shows only student/alumni); restrict role assignment and add
+  authentication throttling before exposing the app to untrusted users. Review
+  [`docs/SECURITY.md`](docs/SECURITY.md) before a public deployment.
 
 ## License
 
