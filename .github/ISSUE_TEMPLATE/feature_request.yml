@@ -1,0 +1,59 @@
+name: Feature request
+description: Propose a focused improvement to CareerGraph AI.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user problem first, then the proposed behavior. Please do not include
+        credentials, private resumes or real user records.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user or maintainer need would this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the app do, and which area would change?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Explain simpler options or workarounds.
+    validations:
+      required: false
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Documentation or developer experience
+        - Frontend UX or accessibility
+        - Backend behavior or data model
+        - Career logic or scoring
+        - Advisor retrieval or validation
+        - Integration or deployment
+    validations:
+      required: true
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Project principles
+      options:
+        - label: The proposal preserves deterministic scores, roadmap order and evidence provenance unless explicitly discussed as a migration.
+          required: true
+        - label: The proposal does not require inventing credentials, integrations, course links, metrics or test results.
+          required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, references or examples are welcome if they contain no secrets or private data.
+    validations:
+      required: false

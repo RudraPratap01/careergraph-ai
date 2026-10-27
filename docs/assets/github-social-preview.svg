@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="socialTitle socialDesc">
+  <title id="socialTitle">CareerGraph AI social preview</title>
+  <desc id="socialDesc">Decorative CareerGraph AI social preview with the slogan Know your gap. Build your path. Meet your mentor. and a connected skills-to-career path motif.</desc>
+  <defs>
+    <linearGradient id="socialBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#060a14"/>
+      <stop offset="0.45" stop-color="#0b1222"/>
+      <stop offset="1" stop-color="#090f1d"/>
+    </linearGradient>
+    <linearGradient id="socialAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.55" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="socialAccentVertical" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <radialGradient id="socialGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#7c3aed" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="socialGlowCyan" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#0891b2" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#0891b2" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="socialGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#17233b" stroke-width="0.65"/>
+    </pattern>
+    <filter id="socialFilter" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" fill="url(#socialBg)"/>
+  <rect width="1280" height="640" fill="url(#socialGrid)" opacity="0.55"/>
+  <circle cx="1040" cy="230" r="380" fill="url(#socialGlow)"/>
+  <circle cx="128" cy="620" r="300" fill="url(#socialGlowCyan)"/>
+
+  <!-- Brand -->
+  <rect x="80" y="66" width="64" height="64" rx="18" fill="#141c34" stroke="#4c3f86"/>
+  <g transform="translate(94 80) scale(2.25)" fill="none" stroke="url(#socialAccentVertical)" stroke-width="1.5" stroke-linecap="round">
+    <path d="M 2 4 L 8 11 L 15 3"/>
+    <circle cx="2" cy="4" r="1.5" fill="#a78bfa" stroke="none"/>
+    <circle cx="8" cy="11" r="1.5" fill="#22d3ee" stroke="none"/>
+    <circle cx="15" cy="3" r="1.5" fill="#a78bfa" stroke="none"/>
+  </g>
+  <text x="164" y="94" fill="#cbd5e1" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2.8">CAREER INTELLIGENCE</text>
+  <text x="162" y="125" fill="#f8fafc" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.4">CareerGraph AI</text>
+
+  <!-- Slogan -->
+  <text x="80" y="246" fill="#a5b4fc" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2.4">KNOW YOUR GAP.</text>
+  <text x="80" y="310" fill="#f8fafc" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="58" font-weight="700" letter-spacing="-1.6">Build your path.</text>
+  <text x="80" y="374" fill="#f8fafc" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="58" font-weight="700" letter-spacing="-1.6">Meet your mentor.</text>
+  <text x="82" y="426" fill="#94a3b8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17">Deterministic readiness. Prerequisite-ordered roadmaps.</text>
+  <text x="82" y="452" fill="#94a3b8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17">Cited career guidance. Evidence-backed mentor matching.</text>
+
+  <!-- Connected path motif -->
+  <g>
+    <path d="M 824 492 C 884 474 906 368 970 362 C 1034 356 1052 292 1116 278 C 1170 266 1198 219 1220 210" fill="none" stroke="#263554" stroke-width="1.2" stroke-dasharray="3 6"/>
+    <path d="M 824 492 L 908 445 L 976 389 L 1058 344 L 1132 267 L 1220 210" fill="none" stroke="url(#socialAccent)" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M 824 492 L 908 445 L 976 389 L 1058 344 L 1132 267 L 1220 210" fill="none" stroke="url(#socialAccent)" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" opacity="0.08"/>
+
+    <circle cx="824" cy="492" r="9" fill="#0a1020" stroke="#a78bfa" stroke-width="3"/>
+    <circle cx="908" cy="445" r="9" fill="#0a1020" stroke="#22d3ee" stroke-width="3"/>
+    <circle cx="976" cy="389" r="9" fill="#0a1020" stroke="#a78bfa" stroke-width="3"/>
+    <circle cx="1058" cy="344" r="9" fill="#0a1020" stroke="#22d3ee" stroke-width="3"/>
+    <circle cx="1132" cy="267" r="9" fill="#0a1020" stroke="#a78bfa" stroke-width="3"/>
+    <circle cx="1220" cy="210" r="15" fill="#171d3b" stroke="#34d399" stroke-width="3" filter="url(#socialFilter)"/>
+
+    <g fill="#94a3b8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">
+      <text x="804" y="525">SKILLS</text>
+      <text x="890" y="479">GAP</text>
+      <text x="956" y="422">READINESS</text>
+      <text x="1038" y="377">ROADMAP</text>
+      <text x="1112" y="300">EVIDENCE</text>
+      <text x="1180" y="242">MENTOR</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <line x1="80" y1="544" x2="1200" y2="544" stroke="#1c2a44"/>
+  <text x="80" y="580" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12.5">FastAPI  ·  React  ·  PostgreSQL / SQLite  ·  Neo4j (optional)  ·  GitHub Actions CI</text>
+  <text x="1200" y="580" text-anchor="end" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12.5">github.com/RudraPratap01/careergraph-ai</text>
+</svg>

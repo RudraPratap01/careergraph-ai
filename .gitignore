@@ -1,39 +1,53 @@
 # Git ignore rules for CareerGraph AI
 
-# ─── Secrets ──────────────────────────────────────────────────────────────────
+# Secrets
 .env
 *.env
+.env.*
+!.env.example
 
-# ─── Python ──────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyc
 .venv/
 venv/
 env/
 *.egg-info/
-dist/
 build/
+dist/
 .pytest_cache/
-*.pyc
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 
-# ─── SQLite dev database ──────────────────────────────────────────────────────
+# SQLite / local databases
 *.db
 *.sqlite3
+*.sqlite
 
-# ─── Node ────────────────────────────────────────────────────────────────────
+# Node
 node_modules/
 dist/
 .next/
+.cache/
+coverage/
 
-# ─── IDE ─────────────────────────────────────────────────────────────────────
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
-# ─── OS ──────────────────────────────────────────────────────────────────────
+# OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# ─── Uploads (user files stay on server, not in repo) ─────────────────────────
+# Runtime uploads and local logs
 backend/uploads/
+*.log
+logs/

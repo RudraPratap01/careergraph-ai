@@ -1,0 +1,90 @@
+name: Bug report
+description: Report a reproducible defect without sharing secrets or private user data.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve CareerGraph AI. Do not paste tokens, passwords, private resume
+        contents, database dumps or other sensitive records. Redact logs and use synthetic data in
+        reproductions.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Authentication or roles
+        - Profiles or resume review
+        - Skill gaps or readiness
+        - Skill graph or roadmap
+        - Assessments
+        - GitHub or LinkedIn verification
+        - Alumni matching or mentorship
+        - Grounded Career Advisor
+        - PostgreSQL or Neo4j integration
+        - Frontend layout or accessibility
+        - Documentation or setup
+        - CI or repository tooling
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A clear description of the observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Use synthetic accounts and data. Remove secrets and personal records.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Commit or branch
+      description: The commit SHA or branch where you observed the problem.
+      placeholder: "main @ abc1234"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Node, database mode, browser, and whether Docker/Neo4j/LLM was enabled.
+      placeholder: |
+        OS:
+        Python:
+        Node:
+        Database: SQLite / PostgreSQL
+        Graph backend: memory / neo4j
+        LLM configured: no / yes (do not include the key)
+        Browser:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove tokens, cookies, emails, resume text and credentials. Screenshots are optional.
+    validations:
+      required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I have removed credentials, tokens, private resumes and personal data from this report.
+          required: true
