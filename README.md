@@ -48,9 +48,9 @@ answer was actually returned.
   (94 documents / 102 chunks). It is **not** semantic/embedding search, web search, or a general
   knowledge base. No external course catalogue or URL index is used.
 * **Neo4j** — the adapter and live integration tests are implemented. The ordinary suite uses
-  the in-memory backend and an unreachable-server fallback. A disposable Neo4j 5.24 service is
-  configured in the GitHub Actions `integration` job; local Docker/Neo4j was unavailable. The
-  release CI result is the live-verification record.
+  the in-memory backend and an unreachable-server fallback. The release CI run passed the
+  `integration` job against disposable PostgreSQL 16 and Neo4j 5.24 service containers; local
+  Docker/Neo4j was unavailable. See the CI result recorded below.
 * **Learning resources / course links** — roadmaps and advisor answers do *not* include course
   URLs. The advisor shows only retrieved, internal curated source cards, so no course links are
   invented.
@@ -723,10 +723,13 @@ database and the Vite dev server. They are verification tools, not repository de
 * This is **Chrome-only** manual/automated QA. No Firefox/Safari run, Lighthouse audit, screen-reader
   session or WCAG conformance certification is claimed.
 
-Live PostgreSQL and Neo4j checks are opt-in and are configured to run in the GitHub Actions
-`integration` job using disposable service containers. Local Docker was unavailable, so the release
-CI result will be the live-service verification record. The ordinary suite does not pretend to have
-exercised them.
+Live PostgreSQL and Neo4j checks are opt-in and were executed by the GitHub Actions `integration`
+job using disposable service containers. The release CI run
+[40483248966](https://github.com/RudraPratap01/careergraph-ai/actions/runs/40483248966) passed all
+three jobs: Backend (pytest + `alembic check`), Frontend (lint + tests + build), and Integration
+(PostgreSQL 16 migrations + 2 live tests; Neo4j 5.24 + 5 live tests). Local Docker was unavailable,
+so this CI run is the live-service verification record. Live OpenRouter generation remains
+unverified because no provider key is available.
 
 ---
 
@@ -765,7 +768,8 @@ and two skills, loaded `/intelligence/status` (`94` documents / `102` chunks,
    by the deployment proxy.
 5. Run the backend suite, frontend suite, lint and build. Re-run the Chrome journey, axe-core and
    responsive audits if UI changes after this release. In GitHub Actions, confirm all three jobs
-   (`Backend`, `Frontend`, `Live PostgreSQL + Neo4j integration`) are green.
+   (`Backend`, `Frontend`, `Live PostgreSQL + Neo4j integration`) are green; the release run above
+   passed all three.
 6. Keep the advisor key backend-only. If it is enabled, put rate limiting/spend controls at the
    API gateway; the application does not implement a per-user LLM quota.
 7. Do not claim live Neo4j/PostgreSQL, live OpenRouter, Firefox/Safari, Lighthouse or WCAG results

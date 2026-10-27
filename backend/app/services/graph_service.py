@@ -354,7 +354,9 @@ class Neo4jSkillGraph(BaseSkillGraph):
     reuses the shared algorithms. ``is_available`` is False when the driver or
     server is unavailable, and :func:`get_graph` falls back to in-memory.
 
-    NOTE: unverified against a live Neo4j in this environment.
+    NOTE: live behavior is covered by the opt-in integration tests against a
+    disposable Neo4j 5.24 service in CI; local environments may still use the
+    in-memory fallback when no server is available.
     """
 
     source = "neo4j"
