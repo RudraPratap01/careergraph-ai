@@ -1,11 +1,10 @@
 /**
- * ProfilePage — Complete Student & Alumni Profile Management (Phase 2).
+ * ProfilePage — student and alumni profile management.
  *
- * Provides:
- *   - Live profile loading & completion calculation
- *   - Student education, target career role, and skill inventory with levels
- *   - Alumni company, role, expertise areas, and mentorship availability
- *   - External links (GitHub, LinkedIn, Portfolio)
+ * Loads the current profile and completion score, then exposes role-specific
+ * forms: education, target role and skills for students; company, expertise,
+ * capacity and availability for alumni. Saves go through the API and the
+ * completion score is refreshed from the server response.
  */
 
 import { useState, useEffect } from 'react'
@@ -83,8 +82,6 @@ export default function ProfilePage() {
 
 
   const fetchProfile = async () => {
-    setLoading(true)
-    setErrorMsg(null)
     try {
       const res = await profileAPI.getMeProfile()
       const data = res.data
@@ -124,14 +121,15 @@ export default function ProfilePage() {
         })
       }
     } catch (err) {
-      console.error(err)
-      setErrorMsg('Failed to load profile details.')
+      setErrorMsg(formatApiError(err, 'Failed to load profile details.'))
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    // Initial profile load; state updates occur after the request resolves.
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchProfile()
   }, [])
 
@@ -249,24 +247,31 @@ export default function ProfilePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
           <div>
             <h1 className="section-title">
-              {isStudent ? '🎓 Student Career Profile' : '💼 Alumni Mentor Profile'}
+              {isStudent ? 'Student career profile' : 'Alumni mentor profile'}
             </h1>
             <p className="section-subtitle" style={{ marginBottom: 0 }}>
               {isStudent
-                ? 'Specify your target role and skills so CareerGraph AI can compute your gap and roadmap.'
-                : 'Share your industry expertise and configure your mentoring availability.'}
+                ? 'Keep your target role and evidence current — every analysis and roadmap is built from this profile.'
+                : 'Share your industry expertise and configure the mentoring capacity students can request.'}
             </p>
           </div>
 
           {/* Completion score indicator */}
           <div className="card" style={{ padding: '0.875rem 1.25rem', minWidth: '220px', background: 'var(--color-bg-surface)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.375rem' }}>
-              <span style={{ color: 'var(--color-text-secondary)' }}>Profile Strength</span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Profile strength</span>
               <span style={{ fontWeight: 700, color: completion >= 80 ? 'var(--color-accent-green)' : 'var(--color-accent-yellow)' }}>
                 {completion}%
               </span>
             </div>
-            <div className="progress-bar-track">
+            <div
+              className="progress-bar-track"
+              role="progressbar"
+              aria-valuenow={completion}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Profile strength"
+            >
               <div
                 className="progress-bar-fill"
                 style={{
@@ -282,13 +287,13 @@ export default function ProfilePage() {
 
         {/* Notifications */}
         {successMsg && (
-          <div className="alert alert-success" style={{ marginBottom: '1.5rem' }}>
-            ✓ {successMsg}
+          <div className="alert alert-success" role="status" style={{ marginBottom: '1.5rem' }}>
+            {successMsg}
           </div>
         )}
         {errorMsg && (
-          <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>
-            ✗ {errorMsg}
+          <div className="alert alert-error" role="alert" style={{ marginBottom: '1.5rem' }}>
+            {errorMsg}
           </div>
         )}
 
@@ -299,15 +304,15 @@ export default function ProfilePage() {
               
               {/* Target Career Card */}
               <div className="card">
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>🎯</span> Target Career Goal
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Target career goal
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
                   The specific role you want to prepare for. We use this to calculate your skill gap.
                 </p>
 
                 <div style={{ marginBottom: '1.25rem' }}>
-                  <label htmlFor="student-target-role" className="label">Target Role *</label>
+                  <label htmlFor="student-target-role" className="label">Target role</label>
                   <input
                     id="student-target-role"
                     name="target_role"
@@ -325,6 +330,7 @@ export default function ProfilePage() {
                       <button
                         key={r}
                         type="button"
+                        aria-pressed={studentForm.target_role === r}
                         onClick={() => setStudentForm((prev) => ({ ...prev, target_role: r }))}
                         className="badge badge-info"
                         style={{
@@ -359,8 +365,8 @@ export default function ProfilePage() {
 
               {/* Academic Background Card */}
               <div className="card">
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>🏫</span> Academic Background
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Academic background
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
                   Your university and current engineering standing.
@@ -393,7 +399,7 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                     <div>
                       <label htmlFor="student-current-year" className="label">Year of Study</label>
                       <select
@@ -447,11 +453,13 @@ export default function ProfilePage() {
 
               {/* Skill Inventory Card */}
               <div className="card" style={{ gridColumn: '1 / -1' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>⚡</span> Current Self-Reported Skills
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Current self-reported skills
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
-                  List the technologies, tools, and languages you have already worked with. In Phase 3, we verify these with resume and GitHub intelligence.
+                  List the technologies, tools, and languages you have worked with. Resume analysis
+                  and GitHub verification can add evidence later; anything added here stays
+                  self-reported.
                 </p>
 
                 {/* Add new skill inputs */}
@@ -553,6 +561,7 @@ export default function ProfilePage() {
                           <button
                             type="button"
                             onClick={() => handleRemoveSkill(s.name)}
+                            aria-label={`Remove ${s.name}`}
                             style={{
                               background: 'transparent',
                               border: 'none',
@@ -561,7 +570,6 @@ export default function ProfilePage() {
                               fontWeight: 700,
                               marginLeft: '0.25rem',
                             }}
-                            title="Remove skill"
                           >
                             ×
                           </button>
@@ -574,11 +582,12 @@ export default function ProfilePage() {
 
               {/* Profiles & External Links Card */}
               <div className="card" style={{ gridColumn: '1 / -1' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>🔗</span> Links & Bio
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Links &amp; bio
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
-                  Links to your work and projects. These are verified automatically in Phase 4.
+                  GitHub can be verified from the public API on the Verification page. LinkedIn and
+                  portfolio links remain self-declared.
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
@@ -647,8 +656,8 @@ export default function ProfilePage() {
                 style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
               >
                 {saving ? (
-                  <><span className="spinner" style={{ width: '16px', height: '16px' }} /> Saving Profile…</>
-                ) : 'Save Student Profile ✓'}
+                  <><span className="spinner" style={{ width: '16px', height: '16px' }} /> Saving profile…</>
+                ) : 'Save student profile'}
               </button>
             </div>
           </form>
@@ -661,8 +670,8 @@ export default function ProfilePage() {
               
               {/* Professional Experience */}
               <div className="card">
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>🏢</span> Professional Experience
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Professional experience
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
                   Your current corporate role and industry background.
@@ -697,7 +706,7 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                     <div>
                       <label htmlFor="alumni-experience" className="label">Years of Experience</label>
                       <input
@@ -746,8 +755,8 @@ export default function ProfilePage() {
 
               {/* Mentorship Settings */}
               <div className="card">
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>🤝</span> Mentorship Settings
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Mentorship settings
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
                   Configure your availability to mentor engineering students.
@@ -765,10 +774,15 @@ export default function ProfilePage() {
                     border: '1px solid var(--color-border)',
                   }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Open to Mentoring</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        Allows students to discover you in the mentor directory
-                      </div>
+                      <label
+                        htmlFor="alumni-available-toggle"
+                        style={{ cursor: 'pointer', display: 'block' }}
+                      >
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Open to mentoring</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          Allows students to discover you in the mentor directory
+                        </div>
+                      </label>
                     </div>
                     <input
                       id="alumni-available-toggle"
@@ -811,8 +825,8 @@ export default function ProfilePage() {
 
               {/* Mentorship Expertise Areas */}
               <div className="card" style={{ gridColumn: '1 / -1' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>💡</span> Mentorship Topics & Expertise
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Mentorship topics &amp; expertise
                 </h3>
                 <p style={{ fontSize: '0.825rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem' }}>
                   Areas where you can review portfolios, conduct mock interviews, or guide roadmap execution.
@@ -820,6 +834,7 @@ export default function ProfilePage() {
 
                 <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1', minWidth: '220px' }}>
+                    <label htmlFor="expertise-input" className="sr-only">Expertise topic</label>
                     <input
                       id="expertise-input"
                       type="text"
@@ -893,6 +908,7 @@ export default function ProfilePage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveExpertise(area)}
+                          aria-label={`Remove ${area}`}
                           style={{
                             background: 'transparent',
                             border: 'none',
@@ -901,7 +917,6 @@ export default function ProfilePage() {
                             fontWeight: 700,
                             marginLeft: '0.25rem',
                           }}
-                          title="Remove topic"
                         >
                           ×
                         </button>
@@ -913,11 +928,11 @@ export default function ProfilePage() {
 
               {/* Bio & Social Links */}
               <div className="card" style={{ gridColumn: '1 / -1' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>🔗</span> Professional Links & Bio
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Professional links &amp; bio
                 </h3>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
                   <div>
                     <label htmlFor="alumni-linkedin" className="label">LinkedIn Profile URL</label>
                     <input
@@ -970,8 +985,8 @@ export default function ProfilePage() {
                 style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
               >
                 {saving ? (
-                  <><span className="spinner" style={{ width: '16px', height: '16px' }} /> Saving Profile…</>
-                ) : 'Save Alumni Profile ✓'}
+                  <><span className="spinner" style={{ width: '16px', height: '16px' }} /> Saving profile…</>
+                ) : 'Save alumni profile'}
               </button>
             </div>
           </form>

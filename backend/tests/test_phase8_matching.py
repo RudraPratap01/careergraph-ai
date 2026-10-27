@@ -274,6 +274,8 @@ class TestMentorMatchApi:
         assert strong["match_band"] == "Strong"
         assert set(strong["overlap_skills"]) == set(required)
         assert set(body["missing_skills"]) == set(required)
+        assert "mentor(s)" not in body["explanation"]
+        assert "skill(s)" not in body["explanation"]
 
     def test_overlap_tracks_the_students_outstanding_skills(self, client, make_user):
         student_headers, _ = make_student(

@@ -25,7 +25,11 @@ const STATUS_BADGE = {
 }
 
 function StatusBadge({ status }) {
-  return <span className={`badge ${STATUS_BADGE[status] || 'badge-info'}`}>{status}</span>
+  return (
+    <span className={`badge ${STATUS_BADGE[status] || 'badge-info'}`} style={{ textTransform: 'capitalize' }}>
+      {status}
+    </span>
+  )
 }
 
 export default function MentorsPage() {
@@ -57,6 +61,8 @@ export default function MentorsPage() {
   }, [isStudent])
 
   useEffect(() => {
+    // Initial requests/matches load; state updates occur after the requests settle.
+    // oxlint-disable-next-line react/set-state-in-effect
     load()
   }, [load])
 
@@ -65,9 +71,17 @@ export default function MentorsPage() {
     setError(null)
     setNotice(null)
     try {
-      await mentorshipAPI.requestMentorship(mentorId, message)
+      const res = await mentorshipAPI.requestMentorship(mentorId, message)
       setRequestingId(null)
       setMessage('')
+      // Show the new request immediately. The follow-up load reconciles it with
+      // the server, but waiting for that request before updating the list would
+      // leave the page briefly claiming no request had been sent.
+      setRequests((prev) => {
+        const created = res.data
+        if (!created?.id || prev.some((r) => r.id === created.id)) return prev
+        return [created, ...prev]
+      })
       setNotice('Your mentorship request was sent.')
       await load()
     } catch (err) {
@@ -95,10 +109,10 @@ export default function MentorsPage() {
   return (
     <div className="page-container">
       <div className="fade-up">
-        <h1 className="section-title">🤝 {isStudent ? 'Find a Mentor' : 'Mentorship Requests'}</h1>
+        <h1 className="section-title">{isStudent ? 'Find a mentor' : 'Mentorship requests'}</h1>
         <p className="section-subtitle">
           {isStudent
-            ? 'Alumni ranked against the skills you still need, each with the exact reasoning behind their score.'
+            ? 'Alumni ranked against the skills you still need. The score is a deterministic ranking heuristic — never a probability — and every factor is shown.'
             : 'Students who asked you for mentorship. Accepting is limited by the mentee capacity on your profile.'}
         </p>
 
@@ -134,7 +148,7 @@ export default function MentorsPage() {
                         <div style={{ fontWeight: 700 }}>{r.student_name || `Student #${r.student_id}`}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                           {new Date(r.created_at).toLocaleString()}
-                          {r.match_score != null && ` • match score ${r.match_score}/100`}
+                          {r.match_score != null && ` • ranking score ${r.match_score}/100`}
                         </div>
                       </div>
                       <StatusBadge status={r.status} />
@@ -381,7 +395,9 @@ export default function MentorsPage() {
                     <div style={{ fontSize: '0.88rem' }}>
                       {r.alumni_name || `Mentor #${r.alumni_id}`}
                       {r.match_score != null && (
-                        <span style={{ color: 'var(--color-text-muted)' }}> • score {r.match_score}</span>
+                        <span style={{ color: 'var(--color-text-muted)' }}>
+                          {' '}• ranking score {r.match_score}/100
+                        </span>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

@@ -125,11 +125,20 @@ export default function AssessmentsPage() {
   return (
     <div className="page-container">
       <div className="fade-up">
-        <h1 className="section-title">📝 Skill Assessments</h1>
+        <h1 className="section-title">Skill assessments</h1>
         <p className="section-subtitle">
           Short, curated checks. Pass one and you can add the skill to your profile as{' '}
           <strong>evidenced</strong> — nothing is added without your confirmation.
         </p>
+
+        {/* Announces the graded result to screen readers without moving focus. */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {result
+            ? `Assessment complete. Score ${result.attempt.score_percent} percent. ${
+                result.attempt.passed ? 'Passed.' : 'Not passed.'
+              }`
+            : ''}
+        </div>
 
         {loading && (
           <div className="card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>

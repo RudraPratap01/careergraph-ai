@@ -1,17 +1,16 @@
 /**
- * AuthContext & useAuth — centralized React Context for authentication state.
+ * AuthProvider — owns the session state for the whole application.
  *
- * Ensures all components (Navbar, ProtectedRoute, Dashboard, Profile, etc.)
- * share the exact same reactive user state without desync or premature redirects.
+ * On mount, an existing token is re-verified against `/auth/me` so a stale or
+ * revoked session cannot leave the UI in a half-authenticated state. Login and
+ * registration persist the token and user snapshot; logout clears both.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { AuthContext } from '../context/AuthContext'
 import { authAPI, formatApiError } from '../services/api'
 
-const AuthContext = createContext(null)
-
-
-export function AuthProvider({ children }) {
+export default function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem('cg_user')
@@ -31,8 +30,7 @@ export function AuthProvider({ children }) {
     }
   })
 
-
-  // Verify and refresh session on mount if token exists
+  // Verify and refresh the session on mount if a token exists.
   useEffect(() => {
     const token = localStorage.getItem('cg_token')
     if (!token) return
@@ -55,7 +53,6 @@ export function AuthProvider({ children }) {
         setInitialCheckDone(true)
       })
   }, [])
-
 
   const login = useCallback(async (email, password) => {
     setLoading(true)
@@ -96,39 +93,25 @@ export function AuthProvider({ children }) {
     }
   }, [login])
 
-
   const logout = useCallback(() => {
     localStorage.removeItem('cg_token')
     localStorage.removeItem('cg_user')
     setUser(null)
   }, [])
 
-  const isAuthenticated = Boolean(user)
-  const isStudent = user?.role === 'student'
-  const isAlumni = user?.role === 'alumni'
-  const isAdmin = user?.role === 'admin'
-
   const value = {
     user,
     loading,
     error,
     initialCheckDone,
-    isAuthenticated,
-    isStudent,
-    isAlumni,
-    isAdmin,
+    isAuthenticated: Boolean(user),
+    isStudent: user?.role === 'student',
+    isAlumni: user?.role === 'alumni',
+    isAdmin: user?.role === 'admin',
     login,
     register,
     logout,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 }

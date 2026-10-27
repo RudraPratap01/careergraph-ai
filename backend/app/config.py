@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # ─── Database ───────────────────────────────────────────────────────────
     # For local dev without Docker, use SQLite.
-    # Switch to postgresql+psycopg2://... once Docker / Postgres is available.
+    # Switch to postgresql+psycopg2://... once PostgreSQL is available.
     DATABASE_URL: str = "sqlite:///./careergraph_dev.db"
 
     # ─── JWT ────────────────────────────────────────────────────────────────
@@ -38,9 +38,17 @@ class Settings(BaseSettings):
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "change-this-too"
 
-    # ─── LLM / OpenRouter (Phase 7+, not yet implemented) ───────────────────
+    # ─── Phase 7: grounded career intelligence ───────────────────────────────
+    # Retrieval is always local and lexical. The configured LLM is optional:
+    # without a key the API returns a deterministic, source-attributed answer.
     OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_MODEL: str = "openai/gpt-4o-mini"
+    LLM_TIMEOUT_SECONDS: float = 20.0
+    LLM_MAX_TOKENS: int = 600
+    LLM_TEMPERATURE: float = 0.2
+    RAG_TOP_K: int = 6
+    RAG_MIN_SCORE: float = 1.0
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
 

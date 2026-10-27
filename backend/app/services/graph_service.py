@@ -15,10 +15,11 @@ share it:
 
 Honesty note
 ------------
-The Neo4j backend is **not verified against a live server** in this environment
-(no Neo4j instance is available). It is code-complete and guarded: if a driver
-or server is missing, :func:`get_graph` logs a warning and falls back to the
-in-memory backend rather than failing.
+The Neo4j backend has opt-in live integration tests and is exercised by the CI
+``integration`` job against a disposable Neo4j 5.24 service container. A local
+live server is not required: if a driver or server is missing, :func:`get_graph`
+logs a warning and falls back to the in-memory backend rather than failing. The
+ordinary unit suite uses the in-memory backend and this fallback path.
 
 All skills are identified by their canonical taxonomy name. Non-canonical names
 are rejected/ignored rather than fabricated.
@@ -361,24 +362,42 @@ class Neo4jSkillGraph(BaseSkillGraph):
     def __init__(self, uri: str, user: str, password: str, seed: bool = True):
         self.is_available = False
         self._driver = None
+        self._loading = False
         super().__init__([])
         try:
             from neo4j import GraphDatabase  # local import — optional dependency
         except Exception as exc:  # pragma: no cover - depends on environment
             logger.warning("Neo4j driver not installed (%s); graph backend unavailable.", exc)
             return
+        driver = None
         try:
-            self._driver = GraphDatabase.driver(uri, auth=(user, password))
+            driver = GraphDatabase.driver(uri, auth=(user, password))
+            self._driver = driver
             self._driver.verify_connectivity()
             self.is_available = True
         except Exception as exc:  # pragma: no cover - depends on environment
             logger.warning("Neo4j unreachable at %s (%s); falling back to in-memory.", uri, exc)
+            if driver is not None:
+                try:
+                    driver.close()
+                except Exception:
+                    pass
             self._driver = None
+            self.is_available = False
             return
 
-        if seed:
-            self.seed_from_curated()
-        self._reload()
+        try:
+            if seed:
+                self.seed_from_curated()
+            # Reloading should not re-persist every edge it just read.
+            self._loading = True
+            self._reload()
+        except Exception as exc:  # pragma: no cover - depends on environment
+            logger.warning("Neo4j graph initialisation failed (%s); falling back to in-memory.", exc)
+            self.close()
+            self.is_available = False
+        finally:
+            self._loading = False
 
     # ── Persistence ─────────────────────────────────────────────────────────
     def seed_from_curated(self) -> int:
@@ -432,7 +451,7 @@ class Neo4jSkillGraph(BaseSkillGraph):
 
     def add_edge(self, prerequisite, dependent, rationale="", source=PREREQUISITE_SOURCE) -> bool:
         added = super().add_edge(prerequisite, dependent, rationale, source)
-        if added and getattr(self, "_driver", None):
+        if added and getattr(self, "_driver", None) and not getattr(self, "_loading", False):
             query = (
                 "MERGE (p:Skill {name: $pre}) "
                 "MERGE (d:Skill {name: $dep}) "
@@ -474,3 +493,18 @@ def get_graph() -> BaseSkillGraph:
         except Exception as exc:  # pragma: no cover - depends on environment
             logger.warning("Neo4j graph backend failed to initialise (%s); using in-memory.", exc)
     return InMemorySkillGraph()
+
+
+def close_graph() -> None:
+    """
+    Releases a cached Neo4j driver during application shutdown.
+
+    In-memory graphs have nothing to release. Clearing the lru_cache prevents a
+    closed driver from being handed out if the process initialises the app again
+    (for example in a test harness).
+    """
+    graph = get_graph()
+    close = getattr(graph, "close", None)
+    if callable(close):
+        close()
+    get_graph.cache_clear()

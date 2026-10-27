@@ -316,16 +316,19 @@ def list_mentor_matches(db: Session, student: User) -> MentorMatchListResponse:
             "profiles they will appear here."
         )
     elif not target_role:
+        mentor_word = "mentor" if len(matches) == 1 else "mentors"
         explanation = (
-            f"Ranked {len(matches)} mentor(s) on experience, availability, capacity "
+            f"Ranked {len(matches)} {mentor_word} on experience, availability, capacity "
             "and institution. Set a target role on your profile to include skill-gap "
             "overlap in the ranking."
         )
     else:
+        mentor_word = "mentor" if len(matches) == 1 else "mentors"
+        skill_word = "skill" if len(missing_skills) == 1 else "skills"
         explanation = (
-            f"Ranked {len(matches)} mentor(s) against {target_occupation}"
+            f"Ranked {len(matches)} {mentor_word} against {target_occupation}"
             + (
-                f", focusing on your {len(missing_skills)} outstanding required skill(s)."
+                f", focusing on your {len(missing_skills)} outstanding required {skill_word}."
                 if missing_skills
                 else ", which you already cover — so overlap is measured against the role itself."
             )

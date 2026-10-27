@@ -1,12 +1,23 @@
 /**
- * Register Page
- * Supports student and alumni registration.
- * Validates client-side before sending to the API.
+ * RegisterPage — student and alumni account creation.
+ *
+ * Client-side validation mirrors the backend rules so users get immediate
+ * feedback, while the API remains the source of truth. The role picker is a
+ * labelled fieldset of toggle buttons with `aria-pressed` state.
  */
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthAside from '../components/AuthAside'
+import PasswordInput from '../components/PasswordInput'
 import { useAuth } from '../hooks/useAuth'
+
+const ROLES = [
+  { value: 'student', label: 'Student', description: 'Analyze my skills' },
+  { value: 'alumni', label: 'Alumni', description: 'Mentor students' },
+]
+
+const PASSWORD_HINT = 'At least 8 characters, including 1 uppercase letter and 1 digit.'
 
 export default function RegisterPage() {
   const { register, loading } = useAuth()
@@ -21,7 +32,10 @@ export default function RegisterPage() {
   })
   const [error, setError] = useState(null)
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleChange = (event) => {
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
+  }
 
   const validate = () => {
     if (form.full_name.trim().length < 2) return 'Full name must be at least 2 characters.'
@@ -32,14 +46,17 @@ export default function RegisterPage() {
     return null
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setError(null)
 
     const validationError = validate()
-    if (validationError) { setError(validationError); return }
+    if (validationError) {
+      setError(validationError)
+      return
+    }
 
-    const { confirm_password: _confirm_password, ...payload } = form
+    const { confirm_password: _confirmPassword, ...payload } = form
     const result = await register(payload)
 
     if (result.success) {
@@ -50,99 +67,112 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.5rem' }}>
-      <div className="fade-up" style={{ width: '100%', maxWidth: '460px' }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🚀</div>
-          <h1 style={{ fontSize: '1.625rem', fontWeight: 700, marginBottom: '0.5rem' }}>Create your account</h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-            Start your career skill analysis in minutes
-          </p>
-        </div>
+    <div className="auth-layout">
+      <AuthAside
+        title="Build a career plan you can actually explain."
+        description="Track the evidence behind every skill, see the weighted gaps for your target role, and follow a roadmap that respects prerequisites."
+      />
 
-        {/* Card */}
-        <div className="card" style={{ padding: '2rem' }}>
-          {error && (
-            <div className="alert alert-error" style={{ marginBottom: '1.25rem' }}>
-              {error}
-            </div>
-          )}
+      <div className="auth-main">
+        <div className="auth-card fade-up">
+          <h1 className="auth-heading">Create your account</h1>
+          <p className="auth-subheading">Start with a profile — you can refine the evidence later.</p>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Role selector */}
-            <div>
-              <label className="label">I am a</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                {[
-                  { value: 'student', label: '🎓 Student', desc: 'Analyze my skills' },
-                  { value: 'alumni',  label: '💼 Alumni',  desc: 'Mentor students' },
-                ].map((r) => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    id={`btn-role-${r.value}`}
-                    onClick={() => setForm({ ...form, role: r.value })}
-                    style={{
-                      padding: '0.75rem',
-                      borderRadius: '8px',
-                      border: `1px solid ${form.role === r.value ? 'var(--color-brand-primary)' : 'var(--color-border)'}`,
-                      background: form.role === r.value ? 'rgba(99,102,241,0.1)' : 'var(--color-bg-elevated)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: form.role === r.value ? 'var(--color-brand-light)' : 'var(--color-text-primary)' }}>
-                      {r.label}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.125rem' }}>{r.desc}</div>
-                  </button>
-                ))}
+          <div className="card">
+            {error && (
+              <div className="alert alert-error" role="alert" style={{ marginBottom: '1.15rem' }}>
+                {error}
               </div>
-            </div>
+            )}
 
-            <div>
-              <label htmlFor="reg-name" className="label">Full name</label>
-              <input id="reg-name" name="full_name" type="text" className="input"
-                placeholder="Aarav Sharma" value={form.full_name} onChange={handleChange} required />
-            </div>
+            <form onSubmit={handleSubmit} className="stack" style={{ gap: '0.95rem' }}>
+              <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className="label">I am a</legend>
+                <div className="role-picker">
+                  {ROLES.map((role) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      id={`btn-role-${role.value}`}
+                      className="role-option"
+                      aria-pressed={form.role === role.value}
+                      onClick={() => setForm((current) => ({ ...current, role: role.value }))}
+                      disabled={loading}
+                    >
+                      <strong>{role.label}</strong>
+                      <span>{role.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
-            <div>
-              <label htmlFor="reg-email" className="label">Email address</label>
-              <input id="reg-email" name="email" type="email" className="input"
-                placeholder="you@example.com" value={form.email} onChange={handleChange} required />
-            </div>
+              <div>
+                <label htmlFor="reg-name" className="label">Full name</label>
+                <input
+                  id="reg-name"
+                  name="full_name"
+                  type="text"
+                  className="input"
+                  placeholder="Aarav Sharma"
+                  value={form.full_name}
+                  onChange={handleChange}
+                  autoComplete="name"
+                  required
+                />
+              </div>
 
-            <div>
-              <label htmlFor="reg-password" className="label">Password</label>
-              <input id="reg-password" name="password" type="password" className="input"
-                placeholder="Min 8 chars, 1 uppercase, 1 digit" value={form.password} onChange={handleChange} required />
-            </div>
+              <div>
+                <label htmlFor="reg-email" className="label">Email address</label>
+                <input
+                  id="reg-email"
+                  name="email"
+                  type="email"
+                  className="input"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  autoComplete="email"
+                  required
+                />
+              </div>
 
-            <div>
-              <label htmlFor="reg-confirm" className="label">Confirm password</label>
-              <input id="reg-confirm" name="confirm_password" type="password" className="input"
-                placeholder="••••••••" value={form.confirm_password} onChange={handleChange} required />
-            </div>
+              <PasswordInput
+                id="reg-password"
+                name="password"
+                label="Password"
+                value={form.password}
+                onChange={handleChange}
+                autoComplete="new-password"
+                hint={PASSWORD_HINT}
+              />
 
-            <button
-              id="btn-register-submit"
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-              style={{ width: '100%', justifyContent: 'center', marginTop: '0.25rem', padding: '0.75rem' }}
-            >
-              {loading ? (
-                <><span className="spinner" style={{ width: '16px', height: '16px' }} /> Creating account…</>
-              ) : 'Create Account →'}
-            </button>
-          </form>
+              <PasswordInput
+                id="reg-confirm"
+                name="confirm_password"
+                label="Confirm password"
+                value={form.confirm_password}
+                onChange={handleChange}
+                autoComplete="new-password"
+              />
 
-          <hr className="divider" />
+              <button
+                id="btn-register-submit"
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+                style={{ width: '100%', marginTop: '0.25rem' }}
+              >
+                {loading ? (
+                  <><span className="spinner" style={{ width: '16px', height: '16px' }} /> Creating account…</>
+                ) : 'Create account'}
+              </button>
+            </form>
 
-          <div style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-            Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--color-brand-light)', fontWeight: 600 }}>Login</Link>
+            <hr className="divider" />
+
+            <p className="auth-switch" style={{ marginTop: 0 }}>
+              Already have an account? <Link to="/login">Sign in</Link>
+            </p>
           </div>
         </div>
       </div>

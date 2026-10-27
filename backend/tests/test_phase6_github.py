@@ -607,7 +607,7 @@ class TestConfirmGitHubSkills:
         # A resume review that does not mention Python must not erase it.
         res = client.post(
             "/resume/confirm-skills",
-            json={"skills": [{"name": "Docker", "level": "beginner", "source": "self"}]},
+            json={"skills": [{"name": "Docker", "level": "beginner"}]},
             headers=headers,
         )
         assert res.status_code == 200, res.text

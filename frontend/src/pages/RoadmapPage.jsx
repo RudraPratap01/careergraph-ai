@@ -132,10 +132,19 @@ export default function RoadmapPage() {
   return (
     <div className="page-container">
       <div className="fade-up">
-        <h1 className="section-title">🗺️ Learning Roadmap</h1>
-        <p className="section-subtitle">
-          A prerequisite-ordered plan built from your verified skills and your target role.
-        </p>
+        <div className="page-header">
+          <div>
+            <h1 className="section-title">Learning roadmap</h1>
+            <p className="section-subtitle">
+              A prerequisite-ordered plan built from your current profile skills and your target role.
+            </p>
+          </div>
+          <div className="row">
+            <Link to="/advisor" className="btn btn-secondary">
+              Ask about this order
+            </Link>
+          </div>
+        </div>
 
         {loading && (
           <div className="card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -216,7 +225,7 @@ export default function RoadmapPage() {
                 <div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{roadmap.occupation_name}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    {roadmap.occupation_category} • graph backend: {roadmap.graph_backend}
+                    {roadmap.occupation_category}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -248,7 +257,7 @@ export default function RoadmapPage() {
               )}
 
               {roadmap.is_partial && (
-                <div className="alert alert-error" role="status" style={{ marginTop: '1rem' }}>
+                <div className="alert alert-info" role="status" style={{ marginTop: '1rem' }}>
                   <strong>Partial roadmap:</strong> {roadmap.notes}
                 </div>
               )}
@@ -280,7 +289,7 @@ export default function RoadmapPage() {
 
             {sortedSteps.length === 0 ? (
               <div className="alert alert-success">
-                🎉 You already cover every required skill for this role. Re-run the{' '}
+                You already cover every required skill for this role. Re-run the{' '}
                 <Link to="/career-gap">gap analysis</Link> to confirm readiness.
               </div>
             ) : (

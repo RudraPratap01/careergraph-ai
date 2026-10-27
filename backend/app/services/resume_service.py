@@ -120,9 +120,15 @@ def confirm_student_skills(
 
     Semantics: The confirmation payload represents the student's complete
     reviewed skill list (auto-extracted skills the student kept, skills the
-    student edited, and any skills the student manually added during review).
+    student edited, any skills the student manually added during review, and
+    existing profile skills the review UI kept so they are not lost).
     Skills that the student removed from the review pane are intentionally
     absent from the payload and will NOT appear in the saved profile.
+
+    The optional ``source`` field distinguishes a resume match from a skill
+    that was already on the profile (``self``). Only those two values are
+    accepted, so this endpoint cannot be used to claim assessment or GitHub
+    evidence; those sources are preserved separately below.
 
     Unrelated profile fields (college, degree, bio, etc.) are not modified.
     Repeated confirmations are idempotent — duplicates by name are collapsed.
@@ -178,7 +184,7 @@ def confirm_student_skills(
         seen[name_key] = {
             "name": skill_item.name.strip(),
             "level": skill_item.level,
-            "source": "resume",
+            "source": skill_item.source,
         }
 
     profile.skills = list(seen.values())

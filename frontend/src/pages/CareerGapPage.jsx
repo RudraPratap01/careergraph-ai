@@ -21,10 +21,15 @@ const BAND_COLORS = {
 
 function SkillBadge({ skill, tone }) {
   const cls = tone === 'matched' ? 'badge-strong' : tone === 'bonus' ? 'badge-info' : 'badge-missing'
+  const title = `${skill.category ? `${skill.category} · ` : ''}Importance ${skill.weight} of 5`
   return (
-    <span className={`badge ${cls}`} title={skill.category || undefined}>
+    <span
+      className={`badge ${cls}`}
+      title={title}
+      aria-label={`${skill.name}, importance ${skill.weight} of 5`}
+    >
       {skill.name}
-      <span style={{ opacity: 0.7, fontSize: '0.68rem', marginLeft: '0.35rem' }}>
+      <span aria-hidden="true" style={{ opacity: 0.7, fontSize: '0.68rem', marginLeft: '0.35rem' }}>
         {skill.weight}/5
       </span>
     </span>
@@ -46,6 +51,9 @@ export default function CareerGapPage() {
     try {
       const res = await careerAPI.getGapAnalysis(occupation)
       setGap(res.data)
+      // Keep the selector in sync with the resolved occupation (the saved
+      // target role may be an alias, or may not match an option value).
+      setSelected(res.data.occupation_key)
     } catch (err) {
       setGap(null)
       if (err.response?.status === 400) {
@@ -85,11 +93,20 @@ export default function CareerGapPage() {
   return (
     <div className="page-container">
       <div className="fade-up">
-        <h1 className="section-title">🎯 Skill Gaps &amp; Career Readiness</h1>
-        <p className="section-subtitle">
-          Compare your verified skills against a target role. The score is a deterministic
-          weighted-coverage metric — not a prediction of hiring outcomes.
-        </p>
+        <div className="page-header">
+          <div>
+            <h1 className="section-title">Skill gaps &amp; career readiness</h1>
+            <p className="section-subtitle">
+              Compare the skills on your profile against a target role. The score is a deterministic
+              weighted-coverage metric — not a prediction of hiring outcomes.
+            </p>
+          </div>
+          <div className="row">
+            <Link to="/advisor" className="btn btn-secondary">
+              Ask about these gaps
+            </Link>
+          </div>
+        </div>
 
         {/* Occupation selector */}
         <div className="card" style={{ marginBottom: '1.5rem' }}>
@@ -159,7 +176,9 @@ export default function CareerGapPage() {
                 <div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{gap.occupation_name}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    {gap.occupation_category} • value from {gap.target_source}
+                    {gap.occupation_category} · {gap.target_source === 'profile.target_role'
+                      ? 'target set on your profile'
+                      : 'target selected for this analysis'}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -205,7 +224,7 @@ export default function CareerGapPage() {
                   className="btn btn-primary"
                   style={{ fontSize: '0.85rem' }}
                 >
-                  🗺️ Build my learning roadmap
+                  Build my learning roadmap
                 </Link>
                 <span className="badge badge-info">
                   {gap.matched_count}/{gap.required_count} required skills covered
@@ -223,7 +242,7 @@ export default function CareerGapPage() {
             >
               <div className="card">
                 <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem' }}>
-                  ✅ Matched required skills ({gap.matched_skills.length})
+                  Matched required skills ({gap.matched_skills.length})
                 </h2>
                 {gap.matched_skills.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
@@ -240,7 +259,7 @@ export default function CareerGapPage() {
 
               <div className="card">
                 <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem' }}>
-                  ⚠️ Missing required skills ({gap.missing_skills.length})
+                  Missing required skills ({gap.missing_skills.length})
                 </h2>
                 {gap.missing_skills.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-accent-green)' }}>
@@ -258,7 +277,7 @@ export default function CareerGapPage() {
               {gap.bonus_skills.length > 0 && (
                 <div className="card">
                   <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem' }}>
-                    ⭐ Bonus skills you already have ({gap.bonus_skills.length})
+                    Bonus skills you already have ({gap.bonus_skills.length})
                   </h2>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {gap.bonus_skills.map((s) => (
@@ -271,7 +290,7 @@ export default function CareerGapPage() {
               {gap.unknown_skills.length > 0 && (
                 <div className="card">
                   <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem' }}>
-                    ❓ Skills not in the taxonomy ({gap.unknown_skills.length})
+                    Skills not in the taxonomy ({gap.unknown_skills.length})
                   </h2>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {gap.unknown_skills.map((name) => (
@@ -287,6 +306,10 @@ export default function CareerGapPage() {
                 </div>
               )}
             </div>
+            <p style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+              Badge numbers show each skill&apos;s importance weight for this role (out of 5), not
+              your proficiency level.
+            </p>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 /**
- * VerificationPage — Phase 6: GitHub verification & LinkedIn link.
+ * VerificationPage — GitHub verification and self-declared LinkedIn link.
  *
  * Two levels of trust are shown explicitly and never blurred:
  *
@@ -156,7 +156,7 @@ export default function VerificationPage() {
     return (
       <div className="page-container">
         <div className="card" data-testid="verification-student-only">
-          <h1 className="section-title">🔗 Verification</h1>
+          <h1 className="section-title">Verification</h1>
           <p style={{ color: 'var(--color-text-secondary)' }}>
             GitHub verification is part of the student workflow. Alumni already
             showcase their GitHub and LinkedIn links on their mentor profile.
@@ -178,7 +178,7 @@ export default function VerificationPage() {
   return (
     <div className="page-container">
       <div className="fade-up">
-        <h1 className="section-title">🔗 Verification</h1>
+        <h1 className="section-title">Verification</h1>
         <p className="section-subtitle">
           Connect real evidence to your profile. GitHub is fetched live; LinkedIn
           is stored as a self-declared link because it cannot be verified.
@@ -213,7 +213,7 @@ export default function VerificationPage() {
             {/* ── GitHub ─────────────────────────────────────────────────── */}
             <div className="card" data-testid="github-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>🐙 GitHub</h2>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>GitHub</h2>
                 {github ? (
                   <span className="badge badge-strong">✓ Account verified</span>
                 ) : (
@@ -236,6 +236,7 @@ export default function VerificationPage() {
                 <input
                   id="github-username"
                   type="text"
+                  className="input"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   placeholder="octocat"
@@ -385,6 +386,11 @@ export default function VerificationPage() {
                     </button>
                   </div>
 
+                  <p style={{ marginTop: '0.6rem', fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
+                    Unlinking keeps your confirmed skills, but changes their evidence source from
+                    GitHub to self-reported.
+                  </p>
+
                   <p style={{ marginTop: '0.875rem', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                     {github.disclaimer}
                   </p>
@@ -395,7 +401,7 @@ export default function VerificationPage() {
             {/* ── LinkedIn ───────────────────────────────────────────────── */}
             <div className="card" data-testid="linkedin-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>💼 LinkedIn</h2>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>LinkedIn</h2>
                 {linkedin ? (
                   <span className="badge badge-medium" data-testid="linkedin-unverified">
                     Unverified — self-declared
@@ -434,6 +440,7 @@ export default function VerificationPage() {
                 <input
                   id="linkedin-url"
                   type="url"
+                  className="input"
                   value={linkedinUrl}
                   onChange={(event) => setLinkedinUrl(event.target.value)}
                   placeholder="https://www.linkedin.com/in/your-name"

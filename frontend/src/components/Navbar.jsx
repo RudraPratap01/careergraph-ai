@@ -1,122 +1,226 @@
 /**
- * Navbar — top navigation bar.
- * Shows different links based on auth state and user role.
+ * Navbar — responsive primary navigation.
+ *
+ * Desktop: inline links, user chip and logout.
+ * ≤1080px: links collapse into an accessible menu button. The panel closes on
+ * route change, on Escape (returning focus to the trigger) and after logout.
+ * Active links expose `aria-current="page"`.
  */
 
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useId, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import Icon from './Icon'
+import Logo from './Logo'
+
+const DASHBOARD_LINK = { to: '/dashboard', label: 'Dashboard' }
+const PROFILE_LINK = { to: '/profile', label: 'Profile' }
+
+const STUDENT_LINKS = [
+  DASHBOARD_LINK,
+  PROFILE_LINK,
+  { to: '/resume', label: 'Resume' },
+  { to: '/career-gap', label: 'Skill Gap' },
+  { to: '/roadmap', label: 'Roadmap' },
+  { to: '/advisor', label: 'Advisor' },
+  { to: '/assessments', label: 'Assessments' },
+  { to: '/verification', label: 'Verification' },
+  { to: '/mentors', label: 'Mentors' },
+]
+
+const ALUMNI_LINKS = [
+  DASHBOARD_LINK,
+  PROFILE_LINK,
+  { to: '/mentors', label: 'Requests' },
+]
+
+/** Returns the navigation entries for a role, without duplicating markup. */
+function linksForRole(role) {
+  if (role === 'student') return STUDENT_LINKS
+  if (role === 'alumni') return ALUMNI_LINKS
+  return [DASHBOARD_LINK, PROFILE_LINK]
+}
+
+const ROLE_BADGE = {
+  student: 'badge-info',
+  alumni: 'badge-strong',
+  admin: 'badge-medium',
+}
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  // Store the path the menu was opened on. A route change makes the menu
+  // disappear without an effect that would trigger an extra render.
+  const [openPath, setOpenPath] = useState(null)
+  const menuId = useId()
+  const toggleRef = useRef(null)
+  const menuOpen = openPath === location.pathname
+  const setMenuOpen = (open) => setOpenPath(open ? location.pathname : null)
+
+  // Escape closes the menu and restores focus to its trigger.
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenPath(null)
+        toggleRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen])
+
+  const links = linksForRole(user?.role)
+  const isActive = (path) => location.pathname === path
 
   const handleLogout = () => {
+    setOpenPath(null)
     logout()
     navigate('/')
   }
 
-  const isActive = (path) => location.pathname === path
+  const toggleMenu = () => setMenuOpen(!menuOpen)
 
   return (
-    <nav style={{
-      background: 'rgba(10,14,26,0.95)',
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid var(--color-border)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '0 1.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '64px',
-      }}>
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', textDecoration: 'none' }}>
-          <div style={{
-            width: '32px', height: '32px',
-            background: 'linear-gradient(135deg, #6366f1, #818cf8)',
-            borderRadius: '8px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px',
-          }}>⚡</div>
-          <span style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontWeight: 700,
-            fontSize: '1.1rem',
-            color: 'var(--color-text-primary)',
-          }}>
-            CareerGraph <span style={{ color: 'var(--color-brand-light)' }}>AI</span>
-          </span>
-        </Link>
+    <nav className="app-nav" aria-label="Primary">
+      <div className="nav-inner">
+        <Logo />
 
-        {/* Nav links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        {isAuthenticated ? (
+          <>
+            <div className="nav-links">
+              {links.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="nav-link"
+                  aria-current={isActive(link.to) ? 'page' : undefined}
+                >
+                  {link.label}
+                </Link>
+              ))}
+
+              <span className="nav-divider" aria-hidden="true" />
+
+              <div className="nav-user">
+                <span className="nav-avatar" aria-hidden="true">
+                  {user?.full_name?.[0]?.toUpperCase() || '?'}
+                </span>
+                <span className="nav-user-name">{user?.full_name?.split(' ')[0]}</span>
+                <RoleBadge role={user?.role} />
+              </div>
+
+              <button
+                id="btn-logout"
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={handleLogout}
+                aria-label="Log out"
+              >
+                <Icon name="logout" size={15} />
+                <span>Log out</span>
+              </button>
+            </div>
+
+            <button
+              ref={toggleRef}
+              type="button"
+              className="nav-toggle"
+              aria-expanded={menuOpen}
+              aria-controls={menuId}
+              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              onClick={toggleMenu}
+            >
+              <Icon name={menuOpen ? 'close' : 'menu'} />
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="nav-links">
+              <Link
+                to="/login"
+                className="nav-link"
+                aria-current={isActive('/login') ? 'page' : undefined}
+              >
+                Log in
+              </Link>
+              <Link to="/register" className="btn btn-primary btn-sm" id="btn-nav-register">
+                Get started
+              </Link>
+            </div>
+
+            <button
+              ref={toggleRef}
+              type="button"
+              className="nav-toggle"
+              aria-expanded={menuOpen}
+              aria-controls={menuId}
+              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              onClick={toggleMenu}
+            >
+              <Icon name={menuOpen ? 'close' : 'menu'} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Mobile panel: rendered for both auth states so every action stays reachable. */}
+      <div id={menuId} className={`nav-mobile${menuOpen ? ' open' : ''}`} hidden={!menuOpen}>
+        <div className="nav-mobile-panel">
           {isAuthenticated ? (
             <>
-              <NavLink to="/dashboard" active={isActive('/dashboard')}>Dashboard</NavLink>
-              <NavLink to="/profile" active={isActive('/profile')}>Profile</NavLink>
-              {user?.role === 'student' && (
-                <>
-                  <NavLink to="/resume" active={isActive('/resume')}>Resume</NavLink>
-                  <NavLink to="/career-gap" active={isActive('/career-gap')}>Skill Gap</NavLink>
-                  <NavLink to="/roadmap" active={isActive('/roadmap')}>Roadmap</NavLink>
-                  <NavLink to="/assessments" active={isActive('/assessments')}>Assessments</NavLink>
-                  <NavLink to="/verification" active={isActive('/verification')}>Verification</NavLink>
-                  <NavLink to="/mentors" active={isActive('/mentors')}>Mentors</NavLink>
-                </>
-              )}
-
-              {user?.role === 'alumni' && (
-                <NavLink to="/mentors" active={isActive('/mentors')}>Requests</NavLink>
-              )}
-
-              <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 0.5rem' }} />
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  padding: '0.375rem 0.75rem',
-                  background: 'var(--color-bg-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                }}>
-                  <div style={{
-                    width: '24px', height: '24px',
-                    background: 'var(--color-brand-primary)',
-                    borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '11px', fontWeight: 700,
-                  }}>
-                    {user?.full_name?.[0]?.toUpperCase() || '?'}
-                  </div>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    {user?.full_name?.split(' ')[0]}
-                  </span>
-                  <RoleBadge role={user?.role} />
-                </div>
-
-                <button
-                  id="btn-logout"
-                  className="btn btn-secondary"
-                  onClick={handleLogout}
-                  style={{ fontSize: '0.85rem', padding: '0.375rem 0.875rem' }}
+              {links.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="nav-mobile-link"
+                  aria-current={isActive(link.to) ? 'page' : undefined}
+                  onClick={() => setOpenPath(null)}
                 >
-                  Logout
+                  {link.label}
+                  {isActive(link.to) && <Icon name="check" size={15} />}
+                </Link>
+              ))}
+
+              <div className="nav-mobile-user">
+                <span className="nav-avatar" aria-hidden="true">
+                  {user?.full_name?.[0]?.toUpperCase() || '?'}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="small" style={{ fontWeight: 600 }}>{user?.full_name}</div>
+                  <div className="tiny muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user?.email}
+                  </div>
+                </div>
+                <span style={{ marginLeft: 'auto' }}>
+                  <RoleBadge role={user?.role} />
+                </span>
+              </div>
+
+              <div className="nav-mobile-actions">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleLogout}>
+                  <Icon name="logout" size={15} />
+                  Log out
                 </button>
               </div>
             </>
           ) : (
             <>
-              <NavLink to="/login" active={isActive('/login')}>Login</NavLink>
-              <Link to="/register" className="btn btn-primary" id="btn-nav-register" style={{ marginLeft: '0.5rem' }}>
-                Get Started
+              <Link
+                to="/login"
+                className="nav-mobile-link"
+                aria-current={isActive('/login') ? 'page' : undefined}
+                onClick={() => setOpenPath(null)}
+              >
+                Log in
               </Link>
+              <div className="nav-mobile-actions">
+                <Link to="/register" className="btn btn-primary" style={{ width: '100%' }}>
+                  Create an account
+                </Link>
+              </div>
             </>
           )}
         </div>
@@ -125,39 +229,13 @@ export default function Navbar() {
   )
 }
 
-function NavLink({ to, children, active }) {
-  return (
-    <Link
-      to={to}
-      style={{
-        padding: '0.375rem 0.75rem',
-        borderRadius: '6px',
-        fontSize: '0.9rem',
-        fontWeight: 500,
-        color: active ? 'var(--color-brand-light)' : 'var(--color-text-secondary)',
-        background: active ? 'rgba(99,102,241,0.1)' : 'transparent',
-        textDecoration: 'none',
-        transition: 'all 0.15s',
-      }}
-    >
-      {children}
-    </Link>
-  )
-}
-
 function RoleBadge({ role }) {
-  const styles = {
-    student: { bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
-    alumni:  { bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
-    admin:   { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' },
-  }
-  const s = styles[role] || styles.student
+  if (!role) return null
   return (
-    <span style={{
-      fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize',
-      padding: '0.1rem 0.4rem', borderRadius: '4px',
-      background: s.bg, color: s.color,
-    }}>
+    <span
+      className={`badge ${ROLE_BADGE[role] || 'badge-neutral'}`}
+      style={{ fontSize: '0.66rem', textTransform: 'capitalize', padding: '0.1rem 0.45rem' }}
+    >
       {role}
     </span>
   )

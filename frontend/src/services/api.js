@@ -159,6 +159,13 @@ export const verificationAPI = {
   getLinkedin: () => api.get('/verification/linkedin'),
 }
 
+// ─── Grounded career intelligence (Phase 7) ──────────────────────────────────
+export const intelligenceAPI = {
+  status: () => api.get('/intelligence/status'),
+  ask: (question, occupation) =>
+    api.post('/intelligence/ask', { question, occupation: occupation || null }),
+}
+
 // ─── Health ──────────────────────────────────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/health'),

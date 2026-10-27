@@ -1,171 +1,166 @@
 /**
- * Landing Page — the first thing a visitor sees.
+ * LandingPage — public product overview.
  *
- * Design decisions:
- *   - Explains the product clearly (no fake stats)
- *   - Shows the workflow: Profile → Analysis → Gap → Roadmap → Mentor
- *   - Professional, information-focused — not a marketing fluff page
+ * Visual hierarchy: one clear promise (know your gaps), a six-step workflow,
+ * the real curated career tracks, the trust model, honest limitations, and a
+ * single primary call to action. Copy avoids invented statistics or claims.
  */
 
 import { Link } from 'react-router-dom'
+import HeroGraph from '../components/HeroGraph'
+import Icon from '../components/Icon'
 import { useAuth } from '../hooks/useAuth'
+import { CAREER_PATHS, LIMITATIONS, PRINCIPLES, WORKFLOW_STEPS } from '../content/landing'
 
-const WORKFLOW_STEPS = [
-  { icon: '👤', label: 'Profile',   desc: 'Add resume, GitHub, projects, certifications' },
-  { icon: '🔍', label: 'Analysis',  desc: 'Extract and normalize skills from all sources' },
-  { icon: '📊', label: 'Skill Gap', desc: 'Compare your skills against your target role' },
-  { icon: '🗺️', label: 'Roadmap',   desc: 'Learn → Practice → Build → Assess for each gap' },
-  { icon: '📈', label: 'Progress',  desc: 'Track readiness over time with real data' },
-  { icon: '🤝', label: 'Mentor',    desc: 'Match with alumni who cover your skill gaps' },
-]
-
-const CAREER_EXAMPLES = [
-  { role: 'Backend Developer',      skills: ['Python', 'FastAPI', 'PostgreSQL', 'Docker', 'REST APIs'] },
-  { role: 'Data Analyst',           skills: ['Python', 'SQL', 'Pandas', 'Data Visualization', 'Statistics'] },
-  { role: 'ML Engineer',            skills: ['Python', 'Scikit-learn', 'PyTorch', 'NLP', 'Docker'] },
-  { role: 'Frontend Developer',     skills: ['React', 'JavaScript', 'TypeScript', 'CSS', 'HTML'] },
-  { role: 'Cybersecurity Analyst',  skills: ['Networking', 'Linux', 'OWASP', 'Cryptography', 'Python'] },
-]
+const CURRENT_YEAR = new Date().getFullYear()
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth()
 
   return (
     <div>
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="bg-grid" style={{ padding: '6rem 1.5rem 5rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        {/* Glow orb */}
-        <div style={{
-          position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)',
-          width: '600px', height: '300px',
-          background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
+      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+      <section className="hero" aria-labelledby="hero-title">
+        <div
+          className="bg-grid"
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.7 }}
+          aria-hidden="true"
+        />
+        <div className="hero-inner">
+          <div className="fade-up">
+            <span className="eyebrow">
+              <Icon name="spark" size={14} />
+              Career intelligence, grounded in evidence
+            </span>
 
-        <div className="fade-up" style={{ maxWidth: '760px', margin: '0 auto', position: 'relative' }}>
-          <div className="badge badge-info" style={{ marginBottom: '1.5rem', display: 'inline-flex' }}>
-            ⚡ Career Intelligence Platform
+            <h1 id="hero-title" className="hero-title">
+              Know exactly what stands between you and{' '}
+              <span className="gradient-text">your target role.</span>
+            </h1>
+
+            <p className="hero-copy">
+              CareerGraph AI turns your resume, GitHub work and assessment results into an honest
+              readiness score — then gives you a prerequisite-ordered learning plan and shows you
+              the alumni who can help with the gaps you actually have.
+            </p>
+
+            <div className="hero-actions">
+              {isAuthenticated ? (
+                <Link to="/dashboard" className="btn btn-primary btn-lg" id="btn-hero-dashboard">
+                  Go to dashboard <Icon name="arrowRight" size={17} />
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register" className="btn btn-primary btn-lg" id="btn-hero-start">
+                    Analyze my skills <Icon name="arrowRight" size={17} />
+                  </Link>
+                  <Link to="/login" className="btn btn-secondary btn-lg" id="btn-hero-login">
+                    I already have an account
+                  </Link>
+                </>
+              )}
+            </div>
+
+            <div className="hero-meta">
+              <span className="chip"><Icon name="shield" size={14} /> Deterministic scores</span>
+              <span className="chip"><Icon name="checkCircle" size={14} /> Evidence you confirm</span>
+              <span className="chip"><Icon name="layers" size={14} /> One shared skill taxonomy</span>
+            </div>
           </div>
 
-          <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.25rem)', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.25rem' }}>
-            Not sure what you're missing<br />
-            <span style={{ color: 'var(--color-brand-light)' }}>for your target career?</span>
-          </h1>
-
-          <p style={{ fontSize: '1.125rem', color: 'var(--color-text-secondary)', maxWidth: '580px', margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
-            CareerGraph AI compares your current skills against what your target role actually requires —
-            then helps you decide what to learn next, where to practice, and which mentor to reach out to.
-          </p>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {isAuthenticated ? (
-              <Link to="/dashboard" className="btn btn-primary" id="btn-hero-dashboard" style={{ fontSize: '1rem', padding: '0.875rem 2rem' }}>
-                Go to Dashboard →
-              </Link>
-            ) : (
-              <>
-                <Link to="/register" className="btn btn-primary" id="btn-hero-start" style={{ fontSize: '1rem', padding: '0.875rem 2rem' }}>
-                  Analyze My Skills →
-                </Link>
-                <Link to="/login" className="btn btn-secondary" id="btn-hero-login" style={{ fontSize: '1rem', padding: '0.875rem 2rem' }}>
-                  Login
-                </Link>
-              </>
-            )}
-          </div>
+          <HeroGraph />
         </div>
       </section>
 
-      {/* ── How It Works ──────────────────────────────────────────────────── */}
-      <section style={{ padding: '5rem 1.5rem', background: 'var(--color-bg-secondary)' }}>
-        <div className="page-container">
-          <p style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--color-brand-light)', textTransform: 'uppercase', marginBottom: '0.75rem', textAlign: 'center' }}>
-            How It Works
-          </p>
-          <h2 style={{ fontSize: '1.875rem', fontWeight: 700, textAlign: 'center', marginBottom: '0.75rem' }}>
-            From profile to personalized roadmap
-          </h2>
-          <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', marginBottom: '3rem', maxWidth: '520px', margin: '0 auto 3rem' }}>
-            Every step is backed by actual data from your profile — not guesswork.
-          </p>
+      {/* ── Workflow ───────────────────────────────────────────────────────── */}
+      <section className="section section-alt" aria-labelledby="workflow-title">
+        <div className="section-inner">
+          <div className="section-head">
+            <p className="eyebrow">How it works</p>
+            <h2 id="workflow-title">From scattered evidence to a plan you can act on</h2>
+            <p>
+              Six connected steps. Every score, gap and roadmap step is derived from the same
+              curated skill model — nothing is invented for display.
+            </p>
+          </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1rem',
-          }}>
-            {WORKFLOW_STEPS.map((step, i) => (
-              <div key={step.label} className="card" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <div style={{
-                  flexShrink: 0,
-                  width: '42px', height: '42px',
-                  background: 'var(--color-bg-elevated)',
-                  borderRadius: '10px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.25rem',
-                }}>
-                  {step.icon}
-                </div>
+          <div className="grid grid-auto stagger">
+            {WORKFLOW_STEPS.map((step, index) => (
+              <article key={step.title} className="card step-card">
+                <span className="step-index" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-brand-light)' }}>
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{step.label}</span>
-                  </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                    {step.desc}
-                  </p>
+                  <h3>{step.title}</h3>
+                  <p>{step.description}</p>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Career Examples ───────────────────────────────────────────────── */}
-      <section style={{ padding: '5rem 1.5rem' }}>
-        <div className="page-container">
-          <h2 style={{ fontSize: '1.875rem', fontWeight: 700, textAlign: 'center', marginBottom: '0.75rem' }}>
-            Supported career paths
-          </h2>
-          <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', marginBottom: '3rem' }}>
-            More careers can be added — the architecture is built to extend.
-          </p>
+      {/* ── Career tracks ──────────────────────────────────────────────────── */}
+      <section className="section" aria-labelledby="paths-title">
+        <div className="section-inner">
+          <div className="section-head">
+            <p className="eyebrow">Target roles</p>
+            <h2 id="paths-title">Start from a role, not a generic checklist</h2>
+            <p>
+              Seven curated career tracks, each with weighted required skills. These are the
+              first skills in each track — the full rubric lives in the app.
+            </p>
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-            {CAREER_EXAMPLES.map((career) => (
-              <div key={career.role} className="card">
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem' }}>{career.role}</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+          <div className="grid grid-auto stagger">
+            {CAREER_PATHS.map((career) => (
+              <article key={career.role} className="card career-card">
+                <h3>{career.role}</h3>
+                <p className="career-count">Required skills include</p>
+                <div className="row" style={{ gap: '0.4rem' }}>
                   {career.skills.map((skill) => (
-                    <span key={skill} className="badge badge-info" style={{ fontSize: '0.72rem' }}>{skill}</span>
+                    <span key={skill} className="badge badge-info">{skill}</span>
                   ))}
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── What this is NOT ──────────────────────────────────────────────── */}
-      <section style={{ padding: '4rem 1.5rem', background: 'var(--color-bg-secondary)' }}>
-        <div className="page-container" style={{ maxWidth: '700px' }}>
-          <div className="card" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>
-              📋 Honest limitations
-            </h3>
-            <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              {[
-                'GitHub activity is supporting evidence, not proof of programming ability.',
-                'Resume extraction can make mistakes — you can always review and correct extracted skills.',
-                'Readiness is an estimate, not a guarantee of employment.',
-                'AI explanations may be imperfect — core calculations are always deterministic.',
-                'Mentor matching is a recommendation, not a guarantee of compatibility.',
-              ].map((item, i) => (
-                <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                  <span style={{ color: 'var(--color-brand-light)', flexShrink: 0 }}>•</span>
-                  {item}
+      {/* ── Trust model + limitations ──────────────────────────────────────── */}
+      <section className="section section-alt" aria-labelledby="principles-title">
+        <div className="section-inner">
+          <div className="section-head">
+            <p className="eyebrow">Built to be trusted</p>
+            <h2 id="principles-title">Clear rules, visible evidence, honest limits</h2>
+            <p>
+              You should always be able to explain where a number came from and what it does not
+              mean.
+            </p>
+          </div>
+
+          <div className="grid grid-2 stagger">
+            {PRINCIPLES.map((principle) => (
+              <article key={principle.title} className="card card-flat">
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>
+                  <span className="card-icon" aria-hidden="true">
+                    <Icon name={principle.icon} size={16} />
+                  </span>
+                  {principle.title}
+                </div>
+                <p className="small muted">{principle.description}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="card" style={{ marginTop: '1.25rem' }}>
+            <h3 style={{ fontSize: '1rem', marginBottom: '0.9rem' }}>Honest limitations</h3>
+            <ul className="principle-list">
+              {LIMITATIONS.map((item) => (
+                <li key={item} className="principle">
+                  <Icon name="alert" size={15} />
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
@@ -173,30 +168,48 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section style={{ padding: '5rem 1.5rem', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>
-          Ready to find your gaps?
-        </h2>
-        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem' }}>
-          Create a free account and start your skill analysis.
-        </p>
-        {!isAuthenticated && (
-          <Link to="/register" className="btn btn-primary" id="btn-cta-start" style={{ fontSize: '1rem', padding: '0.875rem 2.5rem' }}>
-            Get Started — Free →
-          </Link>
-        )}
+      {/* ── CTA ────────────────────────────────────────────────────────────── */}
+      <section className="section">
+        <div className="section-inner">
+          <div className="cta-panel">
+            <div>
+              <p className="eyebrow">Ready when you are</p>
+              <h2>Find the real gaps. Close them deliberately.</h2>
+              <p>
+                Create a free account, set a target role, and get a readiness breakdown you can
+                defend — line by line.
+              </p>
+            </div>
+            {isAuthenticated ? (
+              <Link to="/dashboard" className="btn btn-primary btn-lg">
+                Open dashboard <Icon name="arrowRight" size={17} />
+              </Link>
+            ) : (
+              <Link to="/register" className="btn btn-primary btn-lg" id="btn-cta-start">
+                Get started — free <Icon name="arrowRight" size={17} />
+              </Link>
+            )}
+          </div>
+        </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer style={{
-        borderTop: '1px solid var(--color-border)',
-        padding: '1.5rem',
-        textAlign: 'center',
-        color: 'var(--color-text-muted)',
-        fontSize: '0.825rem',
-      }}>
-        CareerGraph AI — Final Year Project · Built with FastAPI, React, PostgreSQL, Neo4j
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <footer className="site-footer">
+        <div className="site-footer-inner">
+          <span>© {CURRENT_YEAR} CareerGraph AI · Final-year engineering project</span>
+          <nav className="site-footer-links" aria-label="Footer">
+            <Link to="/">Home</Link>
+            {isAuthenticated ? (
+              <Link to="/dashboard">Dashboard</Link>
+            ) : (
+              <>
+                <Link to="/login">Log in</Link>
+                <Link to="/register">Create account</Link>
+              </>
+            )}
+          </nav>
+          <span>FastAPI · React · SQLite / PostgreSQL</span>
+        </div>
       </footer>
     </div>
   )

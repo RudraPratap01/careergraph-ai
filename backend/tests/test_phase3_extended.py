@@ -451,6 +451,44 @@ class TestSkillConfirmationSemantics:
         profile = client.get("/profile/me", headers=headers).json()
         assert profile["student_profile"]["skills"] == []
 
+    def test_kept_profile_skill_keeps_self_source(self, client):
+        _, headers = _register_and_login(client, "confirm_g@example.com")
+        seed = client.put("/profile/student", json={
+            "skills": [{"name": "SQL", "level": "intermediate", "source": "self"}],
+        }, headers=headers)
+        assert seed.status_code == 200
+
+        txt = SAMPLE_RESUME_TEXT.encode("utf-8")
+        upload = client.post("/resume/upload", files={"file": ("resume.txt", txt, "text/plain")}, headers=headers)
+        rid = upload.json()["resume_id"]
+
+        confirm = client.post("/resume/confirm-skills",
+            json={"resume_id": rid, "skills": [
+                {"name": "Python", "level": "advanced", "source": "resume"},
+                {"name": "SQL", "level": "intermediate", "source": "self"},
+            ]},
+            headers=headers)
+        assert confirm.status_code == 200
+
+        profile = client.get("/profile/me", headers=headers).json()
+        by_name = {s["name"]: s for s in profile["student_profile"]["skills"]}
+        assert by_name["SQL"]["source"] == "self"
+        assert by_name["SQL"]["level"] == "intermediate"
+        assert by_name["Python"]["source"] == "resume"
+
+    def test_confirm_skill_source_cannot_claim_evidence(self, client):
+        _, headers = _register_and_login(client, "confirm_h@example.com")
+        txt = SAMPLE_RESUME_TEXT.encode("utf-8")
+        upload = client.post("/resume/upload", files={"file": ("resume.txt", txt, "text/plain")}, headers=headers)
+        rid = upload.json()["resume_id"]
+
+        confirm = client.post("/resume/confirm-skills",
+            json={"resume_id": rid, "skills": [
+                {"name": "Python", "level": "advanced", "source": "github"},
+            ]},
+            headers=headers)
+        assert confirm.status_code == 422
+
 
 # ── TASK E: Authentication and authorization ─────────────────────────────────
 

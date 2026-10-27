@@ -50,6 +50,16 @@ class ConfirmSkillItem(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     level: str = Field("intermediate", pattern="^(beginner|intermediate|advanced)$")
     category: Optional[str] = None
+    source: str = Field(
+        "resume",
+        pattern="^(resume|self)$",
+        description=(
+            "Provenance to store for this reviewed skill. 'resume' marks a skill "
+            "matched by the resume, while 'self' keeps a skill that was already "
+            "on the profile as self-reported. Evidence sources (assessment, "
+            "github) cannot be claimed through this request."
+        ),
+    )
 
 
 class ConfirmSkillsRequest(BaseModel):

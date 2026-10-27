@@ -90,11 +90,11 @@ describe('CareerGapPage', () => {
     await screen.findByTestId('gap-analysis')
 
     // Matched section contains Python.
-    expect(screen.getByText('✅ Matched required skills (1)')).toBeInTheDocument()
+    expect(screen.getByText('Matched required skills (1)')).toBeInTheDocument()
     expect(screen.getByText('Python')).toBeInTheDocument()
 
     // Missing section.
-    expect(screen.getByText('⚠️ Missing required skills (3)')).toBeInTheDocument()
+    expect(screen.getByText('Missing required skills (3)')).toBeInTheDocument()
     expect(screen.getByText('REST APIs')).toBeInTheDocument()
 
     // Unknown skills are reported, not silently dropped.

@@ -117,7 +117,22 @@ describe('MentorsPage (student)', () => {
 
   it('sends a mentorship request with the mentor id and message', async () => {
     const user = userEvent.setup()
-    mentorshipAPI.requestMentorship.mockResolvedValue({ data: { id: 1 } })
+    const created = {
+      id: 7,
+      student_id: 1,
+      student_name: 'Test Student',
+      alumni_id: 42,
+      alumni_name: 'Priya Mentor',
+      message: 'Could you help me with SQL?',
+      status: 'pending',
+      match_score: 85,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    }
+    mentorshipAPI.requestMentorship.mockResolvedValue({ data: created })
+    mentorshipAPI.listRequests
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValue({ data: [created] })
 
     renderPage()
     const card = await screen.findByTestId('mentor-42')
@@ -128,6 +143,8 @@ describe('MentorsPage (student)', () => {
 
     expect(mentorshipAPI.requestMentorship).toHaveBeenCalledWith(42, 'Could you help me with SQL?')
     expect(await screen.findByText('Your mentorship request was sent.')).toBeInTheDocument()
+    const sent = await screen.findByTestId('requests-sent')
+    expect(within(sent).getByText('pending')).toBeInTheDocument()
   })
 
   it('disables requesting when at capacity, unavailable or already asked', async () => {
@@ -214,7 +231,7 @@ describe('MentorsPage (alumni)', () => {
     const card = within(panel).getByTestId('request-7')
     expect(within(card).getByText('Aarav Student')).toBeInTheDocument()
     expect(within(card).getByText(/I would love your guidance/)).toBeInTheDocument()
-    expect(within(card).getByText(/match score 72\/100/)).toBeInTheDocument()
+    expect(within(card).getByText(/ranking score 72\/100/)).toBeInTheDocument()
 
     // Alumni never load the match list.
     expect(mentorshipAPI.getMatches).not.toHaveBeenCalled()

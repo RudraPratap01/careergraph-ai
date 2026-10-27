@@ -19,11 +19,13 @@ from app.routes.assessments import router as assessments_router
 from app.routes.career import router as career_router
 from app.routes.graph import router as graph_router
 from app.routes.health import router as health_router
+from app.routes.intelligence import router as intelligence_router
 from app.routes.mentorship import router as mentorship_router
 from app.routes.profile import router as profile_router
 from app.routes.resume import router as resume_router
 from app.routes.roadmap import router as roadmap_router
 from app.routes.verification import router as verification_router
+from app.services.graph_service import close_graph
 
 settings = get_settings()
 
@@ -60,9 +62,9 @@ app.include_router(roadmap_router)    # Phase 5 — learning roadmap
 app.include_router(assessments_router)  # Phase 8 — skill assessments
 app.include_router(mentorship_router)   # Phase 8 — alumni matching & mentorship
 app.include_router(verification_router)  # Phase 6 — GitHub verification & LinkedIn link
+app.include_router(intelligence_router)  # Phase 7 — grounded career intelligence
 
-# Additional routers will be registered here in later phases:
-# app.include_router(rag_router)       # Phase 7
+# Additional routers will be registered here in later phases if required.
 
 
 # ─── Startup ─────────────────────────────────────────────────────────────────
@@ -75,6 +77,12 @@ def on_startup():
     """
     create_tables()
     print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started ({settings.ENVIRONMENT})")
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    """Release optional graph-driver resources on application shutdown."""
+    close_graph()
 
 
 @app.get("/", include_in_schema=False)
